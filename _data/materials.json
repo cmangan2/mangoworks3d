@@ -1,0 +1,10 @@
+{
+  "items": [
+    { "name": "PLA" },
+    { "name": "PETG" },
+    { "name": "ABS" },
+    { "name": "TPU (Flexible)" },
+    { "name": "ASA" },
+    { "name": "PLA+ (High Strength)" }
+  ]
+}
