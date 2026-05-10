@@ -1,0 +1,40 @@
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "images"
+public_folder: "/images"
+
+collections:
+
+  - name: "catalog"
+    label: "Shop Designs"
+    folder: "_data/catalog"
+    create: true
+    slug: "{{slug}}"
+    fields:
+      - { label: "Design Name", name: "name", widget: "string" }
+      - { label: "Description", name: "desc", widget: "text" }
+      - { label: "Emoji (placeholder icon)", name: "emoji", widget: "string", default: "🖨️" }
+      - { label: "Photo (optional)", name: "image", widget: "image", required: false }
+      - { label: "Active (show in shop)", name: "active", widget: "boolean", default: true }
+
+  - name: "materials"
+    label: "Materials"
+    file: "_data/materials.json"
+    fields:
+      - label: "Materials List"
+        name: "items"
+        widget: "list"
+        field: { label: "Material Name", name: "name", widget: "string" }
+
+  - name: "colors"
+    label: "Colors"
+    file: "_data/colors.json"
+    fields:
+      - label: "Colors List"
+        name: "items"
+        widget: "list"
+        fields:
+          - { label: "Color Name", name: "name", widget: "string" }
+          - { label: "Hex Code", name: "hex", widget: "color" }
