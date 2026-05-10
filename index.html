@@ -7,6 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+<script>
+  if (window.location.hash && window.location.hash.includes('recovery_token')) {
+    window.location.href = '/admin/#' + window.location.hash.split('#')[1];
+  }
+  if (window.location.hash && window.location.hash.includes('invite_token')) {
+    window.location.href = '/admin/#' + window.location.hash.split('#')[1];
+  }
+</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
