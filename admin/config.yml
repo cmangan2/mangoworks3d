@@ -24,22 +24,19 @@ collections:
     label: "Materials & Colors"
     files:
       - name: "materials"
-        label: "Materials"
+        label: "Materials & Their Colors"
         file: "_data/materials.json"
         fields:
-          - label: "Materials List"
+          - label: "Materials"
             name: "items"
             widget: "list"
+            summary: "{{fields.name}}"
             fields:
               - { label: "Material Name", name: "name", widget: "string" }
-
-      - name: "colors"
-        label: "Colors"
-        file: "_data/colors.json"
-        fields:
-          - label: "Colors List"
-            name: "items"
-            widget: "list"
-            fields:
-              - { label: "Color Name", name: "name", widget: "string" }
-              - { label: "Hex Code", name: "hex", widget: "string" }
+              - label: "Available Colors for this Material"
+                name: "colors"
+                widget: "list"
+                summary: "{{fields.name}}"
+                fields:
+                  - { label: "Color Name", name: "name", widget: "string" }
+                  - { label: "Hex Code (e.g. #FF8C00)", name: "hex", widget: "string" }
