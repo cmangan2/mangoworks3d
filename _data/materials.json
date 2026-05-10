@@ -3,74 +3,55 @@
     {
       "name": "PLA",
       "colors": [
-        {
-          "name": "Black",
-          "hex": "#1C1C1C"
-        }
+        { "name": "White", "hex": "#F5F5F0" },
+        { "name": "Black", "hex": "#1C1C1C" },
+        { "name": "Mango Orange", "hex": "#FF8C00" },
+        { "name": "Red", "hex": "#E63946" },
+        { "name": "Blue", "hex": "#2196F3" },
+        { "name": "Teal", "hex": "#00C9A7" },
+        { "name": "Green", "hex": "#8BC34A" },
+        { "name": "Yellow", "hex": "#FFD700" }
       ]
     },
     {
       "name": "PETG",
       "colors": [
-        {
-          "name": "Black",
-          "hex": "#1C1C1C"
-        }
+        { "name": "White", "hex": "#F5F5F0" },
+        { "name": "Black", "hex": "#1C1C1C" },
+        { "name": "Blue", "hex": "#2196F3" },
+        { "name": "Red", "hex": "#E63946" }
       ]
     },
     {
       "name": "ABS",
       "colors": [
-        {
-          "name": "White",
-          "hex": "#F5F5F0"
-        },
-        {
-          "name": "Black",
-          "hex": "#1C1C1C"
-        },
-        {
-          "name": "Gray",
-          "hex": "#888888"
-        },
-        {
-          "name": "Red",
-          "hex": "#E63946"
-        }
+        { "name": "White", "hex": "#F5F5F0" },
+        { "name": "Black", "hex": "#1C1C1C" },
+        { "name": "Gray", "hex": "#888888" }
       ]
     },
     {
-      "name": "TPU for AMS",
+      "name": "TPU (Flexible)",
       "colors": [
-        {
-          "name": "Black",
-          "hex": "#1C1C1C"
-        },
-        {
-          "name": "White",
-          "hex": "#F5F5F0"
-        },
-        {
-          "name": "Light Blue",
-          "hex": "TBD"
-        },
-        {
-          "name": "Yellow",
-          "hex": "TBD"
-        }
+        { "name": "Black", "hex": "#1C1C1C" },
+        { "name": "White", "hex": "#F5F5F0" },
+        { "name": "Mango Orange", "hex": "#FF8C00" }
       ]
     },
     {
       "name": "ASA",
       "colors": [
-        {
-          "name": "White",
-          "hex": "#F5F5F0"
-        },
-        {
-          "name": "Black",
-          "hex": "#1C1C1C"
-        }
+        { "name": "White", "hex": "#F5F5F0" },
+        { "name": "Black", "hex": "#1C1C1C" }
+      ]
+    },
+    {
+      "name": "PLA+ (High Strength)",
+      "colors": [
+        { "name": "White", "hex": "#F5F5F0" },
+        { "name": "Black", "hex": "#1C1C1C" },
+        { "name": "Gray", "hex": "#888888" },
+        { "name": "Red", "hex": "#E63946" }
       ]
     }
   ]
