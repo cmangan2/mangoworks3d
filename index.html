@@ -928,17 +928,23 @@
   let CATALOG = [];
   let cart = [];
 
+  let MATERIALS_DATA = []; // full objects with colors
+
   async function loadData() {
     try {
-      const [mRes, cRes] = await Promise.all([
-        fetch('/_data/materials.json'),
-        fetch('/_data/colors.json')
-      ]);
+      const mRes = await fetch('/_data/materials.json');
       const mData = await mRes.json();
-      const cData = await cRes.json();
+      MATERIALS_DATA = mData.items;
       MATERIALS = mData.items.map(i => i.name);
-      COLORS = cData.items;
+      // Default colors to all unique colors across all materials
+      const allColors = [];
+      const seen = new Set();
+      mData.items.forEach(m => m.colors.forEach(c => {
+        if (!seen.has(c.name)) { seen.add(c.name); allColors.push(c); }
+      }));
+      COLORS = allColors;
     } catch(e) {
+      MATERIALS_DATA = [];
       MATERIALS = ['PLA','PETG','ABS','TPU (Flexible)','ASA'];
       COLORS = [
         {name:'White',hex:'#F5F5F0'},{name:'Black',hex:'#1C1C1C'},
@@ -947,14 +953,27 @@
       ];
     }
 
-    // Load catalog from _data/catalog/ markdown files
+    // Load catalog
     try {
       const res = await fetch('/_data/catalog/index.json');
-      if (res.ok) {
-        const data = await res.json();
-        CATALOG = data;
-      }
+      if (res.ok) { CATALOG = await res.json(); }
     } catch(e) { CATALOG = []; }
+  }
+
+  function getColorsForMaterial(matName) {
+    const mat = MATERIALS_DATA.find(m => m.name === matName);
+    return mat ? mat.colors : COLORS;
+  }
+
+  function updateColorSelect(matSelectId, colSelectId) {
+    const matVal = document.getElementById(matSelectId).value;
+    const colSel = document.getElementById(colSelectId);
+    const colors = matVal ? getColorsForMaterial(matVal) : COLORS;
+    const prev = colSel.value;
+    colSel.innerHTML = '<option value="" disabled selected>Choose color…</option>' +
+      colors.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    // restore previous selection if still valid
+    if (colors.find(c => c.name === prev)) colSel.value = prev;
   }
 
   let cart = [];
@@ -973,7 +992,6 @@
         : `<span>${product.emoji}</span>`;
 
       const materialOptions = MATERIALS.map(m => `<option>${m}</option>`).join('');
-      const colorOptions = COLORS.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
 
       card.innerHTML = `
         <div class="product-thumb">${thumbContent}</div>
@@ -981,8 +999,8 @@
           <div class="product-name">${product.name}</div>
           <div class="product-desc">${product.desc}</div>
           <div class="product-options">
-            <select id="mat-${product.id}"><option value="" disabled selected>Choose material…</option>${materialOptions}</select>
-            <select id="col-${product.id}"><option value="" disabled selected>Choose color…</option>${colorOptions}</select>
+            <select id="mat-${product.id}" onchange="updateColorSelect('mat-${product.id}','col-${product.id}')"><option value="" disabled selected>Choose material…</option>${materialOptions}</select>
+            <select id="col-${product.id}"><option value="" disabled selected>Choose color…</option></select>
             <div class="qty-row">
               <button class="qty-btn" onclick="changeQty(${product.id},-1)">−</button>
               <span class="qty-num" id="qty-${product.id}">1</span>
@@ -1009,11 +1027,11 @@
         <input type="file" id="shopFileInput" style="display:none" accept=".stl,.3mf,.obj"/>
       </div>
       <p id="shop-file-chosen" style="font-size:0.85rem;color:var(--teal);display:none;"></p>
-      <select id="upload-mat" style="background:var(--bg3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.85rem;padding:0.5rem 0.75rem;outline:none;cursor:pointer;">
+      <select id="upload-mat" onchange="updateColorSelect('upload-mat','upload-col')" style="background:var(--bg3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.85rem;padding:0.5rem 0.75rem;outline:none;cursor:pointer;">
         <option value="" disabled selected>Choose material…</option>${materialOptions}
       </select>
       <select id="upload-col" style="background:var(--bg3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.85rem;padding:0.5rem 0.75rem;outline:none;cursor:pointer;">
-        <option value="" disabled selected>Choose color…</option>${colorOptions}
+        <option value="" disabled selected>Choose color…</option>
       </select>
       <div class="qty-row">
         <button class="qty-btn" onclick="changeQty('upload',-1)">−</button>
@@ -1047,12 +1065,22 @@
     ).join('') + `<div class="material-chip" onclick="selectMaterial(this)">Not sure</div>`;
   }
 
-  function populateColorSwatches() {
+  function populateColorSwatches(colors) {
     const container = document.querySelector('.color-swatches');
     if (!container) return;
-    container.innerHTML = COLORS.map(c =>
+    const list = colors || COLORS;
+    container.innerHTML = list.map(c =>
       `<div class="swatch" style="background:${c.hex}" onclick="selectColor(this)" title="${c.name}"></div>`
     ).join('');
+  }
+
+  function onRequestMaterialChange() {
+    const sel = document.getElementById('service');
+    const matChip = document.querySelector('.material-chip.active');
+    if (matChip) {
+      const colors = getColorsForMaterial(matChip.textContent.trim());
+      populateColorSwatches(colors);
+    }
   }
 
   const qtys = {};
@@ -1151,6 +1179,8 @@
   function selectMaterial(el) {
     document.querySelectorAll('.material-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
+    const colors = getColorsForMaterial(el.textContent.trim());
+    populateColorSwatches(colors);
   }
 
   function selectColor(el) {
