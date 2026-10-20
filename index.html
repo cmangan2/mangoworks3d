@@ -192,6 +192,32 @@
     line-height: 1;
   }
   .stat-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
+  .stat-materials { position: relative; cursor: help; outline: none; }
+  .stat-materials .stat-label { text-decoration: underline dotted; text-underline-offset: 4px; }
+  .mat-pop {
+    position: absolute; top: calc(100% + 12px); left: 50%; z-index: 50;
+    transform: translate(-50%, -6px);
+    min-width: 190px; padding: 0.9rem 1.1rem;
+    background: var(--bg2); border: 1px solid rgba(255,140,0,0.35); border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    text-align: left;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+  }
+  .mat-pop::before {
+    content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    border: 7px solid transparent; border-bottom-color: rgba(255,140,0,0.35);
+  }
+  .stat-materials:hover .mat-pop,
+  .stat-materials:focus-within .mat-pop,
+  .stat-materials.open .mat-pop { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); }
+  .mat-pop-title {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--mango); margin-bottom: 0.5rem;
+  }
+  .mat-pop ul { list-style: none; margin: 0; padding: 0; }
+  .mat-pop li { font-size: 0.95rem; font-weight: 600; padding: 0.2rem 0; white-space: nowrap; }
+  .mat-pop li::before { content: '●'; color: var(--mango); font-size: 0.55rem; margin-right: 0.6rem; vertical-align: middle; }
 
   /* ── SECTION HEADERS ── */
   .section { padding: 5rem 2.5rem; }
@@ -643,17 +669,17 @@
       <div class="stat-num">FDM</div>
       <div class="stat-label">Fused Deposition Modeling</div>
     </div>
-    <div>
+    <div class="stat-materials" tabindex="0" aria-describedby="mat-pop">
       <div class="stat-num" id="stat-materials">6</div>
       <div class="stat-label">Materials Available</div>
+      <div class="mat-pop" id="mat-pop" role="tooltip">
+        <div class="mat-pop-title">Materials</div>
+        <ul id="mat-pop-list"></ul>
+      </div>
     </div>
     <div>
       <div class="stat-num">P1S</div>
       <div class="stat-label">Bambu Labs Printer</div>
-    </div>
-    <div>
-      <div class="stat-num">NH</div>
-      <div class="stat-label">Based in New Hampshire</div>
     </div>
   </div>
 
@@ -931,7 +957,7 @@
       COLORS = allColors;
     } catch(e) {
       MATERIALS_DATA = [];
-      MATERIALS = ['PLA','PETG','ABS','TPU (Flexible)','ASA'];
+      MATERIALS = ['PLA','ABS','PETG','ASA','TPU AMS','TPU 95A HF'];
       COLORS = [
         {name:'White',hex:'#F5F5F0'},{name:'Black',hex:'#1C1C1C'},
         {name:'Mango Orange',hex:'#FF8C00'},{name:'Red',hex:'#E63946'},
@@ -942,6 +968,8 @@
     // Update materials count stat
     const statEl = document.getElementById('stat-materials');
     if (statEl) statEl.textContent = MATERIALS.length;
+    const popList = document.getElementById('mat-pop-list');
+    if (popList) popList.innerHTML = MATERIALS.map(m => `<li>${m}</li>`).join('');
 
     // Load catalog from _data/catalog/ folder (each design is a separate JSON file)
     try {
@@ -991,8 +1019,6 @@
     // restore previous selection if still valid
     if (colors.find(c => c.name === prev)) colSel.value = prev;
   }
-
-  let cart = [];
 
   function buildShop() {
     const grid = document.getElementById('shop-grid');

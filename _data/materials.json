@@ -14,15 +14,6 @@
       ]
     },
     {
-      "name": "PETG",
-      "colors": [
-        { "name": "White", "hex": "#F5F5F0" },
-        { "name": "Black", "hex": "#1C1C1C" },
-        { "name": "Blue", "hex": "#2196F3" },
-        { "name": "Red", "hex": "#E63946" }
-      ]
-    },
-    {
       "name": "ABS",
       "colors": [
         { "name": "White", "hex": "#F5F5F0" },
@@ -31,11 +22,12 @@
       ]
     },
     {
-      "name": "TPU (Flexible)",
+      "name": "PETG",
       "colors": [
-        { "name": "Black", "hex": "#1C1C1C" },
         { "name": "White", "hex": "#F5F5F0" },
-        { "name": "Mango Orange", "hex": "#FF8C00" }
+        { "name": "Black", "hex": "#1C1C1C" },
+        { "name": "Blue", "hex": "#2196F3" },
+        { "name": "Red", "hex": "#E63946" }
       ]
     },
     {
@@ -46,12 +38,19 @@
       ]
     },
     {
-      "name": "PLA+ (High Strength)",
+      "name": "TPU AMS",
       "colors": [
-        { "name": "White", "hex": "#F5F5F0" },
         { "name": "Black", "hex": "#1C1C1C" },
-        { "name": "Gray", "hex": "#888888" },
-        { "name": "Red", "hex": "#E63946" }
+        { "name": "White", "hex": "#F5F5F0" },
+        { "name": "Mango Orange", "hex": "#FF8C00" }
+      ]
+    },
+    {
+      "name": "TPU 95A HF",
+      "colors": [
+        { "name": "Black", "hex": "#1C1C1C" },
+        { "name": "White", "hex": "#F5F5F0" },
+        { "name": "Mango Orange", "hex": "#FF8C00" }
       ]
     }
   ]
