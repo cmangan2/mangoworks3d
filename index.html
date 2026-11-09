@@ -717,7 +717,7 @@
         <div class="service-num">01</div>
         <div class="service-icon">📁</div>
         <h3>Print From a File</h3>
-        <p>Already have an STL or 3MF? Just send it over, pick your material and color, and we'll handle the rest. Fast, simple, reliable.</p>
+        <p>Already have a STEP, STL or 3MF file? Just send it over, pick your material and color, and we'll handle the rest. STEP files are best — they keep exact dimensions, so tweaks are easy.</p>
         <button class="service-link" onclick="showPage('request')">Upload your file →</button>
       </div>
       <div class="service-card" style="--card-accent: var(--teal)">
@@ -829,9 +829,9 @@
           <label>Upload Your File (optional)</label>
           <div class="file-drop" onclick="document.getElementById('fileInput').click()">
             <div class="drop-icon">📎</div>
-            <p><span>Click to upload</span> or drag & drop your STL, 3MF, or image file</p>
-            <p style="font-size:0.78rem; margin-top:6px;">Max 5 MB · STL, 3MF, OBJ, PNG, JPG · Bigger file? Paste a share link in the description.</p>
-            <input type="file" id="fileInput" style="display:none" accept=".stl,.3mf,.obj,.png,.jpg,.jpeg"/>
+            <p><span>Click to upload</span> or drag & drop your STEP, STL, 3MF, or image file</p>
+            <p style="font-size:0.78rem; margin-top:6px;">Max 5 MB · <strong style="color:var(--mango);">STEP / STP preferred</strong> · STL, 3MF, OBJ, PNG, JPG · Bigger file? Paste a share link in the description.</p>
+            <input type="file" id="fileInput" style="display:none" accept=".step,.stp,.stl,.3mf,.obj,.png,.jpg,.jpeg"/>
           </div>
           <p id="file-chosen" style="font-size:0.85rem; color:var(--teal); margin-top:6px; display:none;"></p>
         </div>
@@ -1172,11 +1172,11 @@
     const materialOptions = MATERIALS.map(m => `<option>${esc(m)}</option>`).join('');
     uploadCard.innerHTML = `
       <h3>📁 Upload Your Own File</h3>
-      <p>Have your own STL or 3MF? Upload it here, pick your options, and add it to your order.</p>
+      <p>Have your own STEP, STL or 3MF? Upload it here, pick your options, and add it to your order. STEP files are preferred.</p>
       <div class="file-drop" onclick="document.getElementById('shopFileInput').click()" style="padding:1.5rem;">
         <div class="drop-icon" style="font-size:1.8rem;margin-bottom:0.5rem;">📎</div>
-        <p><span style="color:var(--mango);font-weight:700;">Click to upload</span> · STL, 3MF, OBJ</p>
-        <input type="file" id="shopFileInput" style="display:none" accept=".stl,.3mf,.obj"/>
+        <p><span style="color:var(--mango);font-weight:700;">Click to upload</span> · STEP/STP, STL, 3MF, OBJ</p>
+        <input type="file" id="shopFileInput" style="display:none" accept=".step,.stp,.stl,.3mf,.obj"/>
       </div>
       <p id="shop-file-chosen" style="font-size:0.85rem;color:var(--teal);display:none;"></p>
       <select id="upload-mat" onchange="updateColorSelect('upload-mat','upload-col')" style="background:var(--bg3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.85rem;padding:0.5rem 0.75rem;outline:none;cursor:pointer;">
