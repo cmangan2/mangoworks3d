@@ -5,13 +5,14 @@ import {
 } from "../lib/util.mjs";
 import { startLogin, verifyLogin, currentUser, sessionCookie, clearCookie, logout } from "../lib/auth.mjs";
 import { trySendMail } from "../lib/mail.mjs";
+import { startUpload, putChunk, attachUploads, getChunk, deleteUpload } from "../lib/uploads.mjs";
 import {
   getMaterials, getCatalog, getSettings, sanitizeMaterials, sanitizeCatalog, sanitizeSettings,
 } from "../lib/site.mjs";
 
 export const config = { path: "/api/*" };
 
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;  // customer attachment (function body limit is ~6 MB)
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;  // direct form attachments (older pages); big files use /uploads
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;   // product photo (the admin page shrinks photos first)
 const STATUS_IDS = new Set(STATUSES.map((s) => s.id));
 
@@ -181,6 +182,9 @@ route("POST", "/requests", async ({ req, url }) => {
     await stores.files().set(`${id}/${n}`, await f.arrayBuffer(), { metadata: meta });
     files.push({ n, ...meta });
   }
+  let uploadIds = [];
+  try { uploadIds = JSON.parse(form.get("uploads") || "[]"); } catch {}
+  for (const f of await attachUploads(uploadIds, id)) files.push({ n: files.length, ...f });
 
   const now = new Date().toISOString();
   const record = {
@@ -240,10 +244,30 @@ route("POST", "/my/requests/([\\w-]+)/approve", async ({ req, url, params: [id] 
   return json(publicRequest(r));
 });
 
-route("GET", "/files/([\\w-]+)/(\\d+)", async ({ req, params: [id, n] }) => {
+// Chunked uploads (anyone filling in the form; ids are unguessable, unsubmitted ones expire).
+route("POST", "/uploads", async ({ req }) => json(await startUpload(await readJson(req))));
+
+route("PUT", "/uploads/([\\w-]+)/(\\d+)", async ({ req, params: [id, i] }) =>
+  json(await putChunk(id, i, await req.arrayBuffer())));
+
+route("GET", "/files/([\\w-]+)/(\\d+)", async ({ req, url, params: [id, n] }) => {
   const u = await requireUser(req);
   const r = await getRequest(id);
   if (!u.admin && r.email !== u.email) throw new HttpError(404, "Not found");
+  const f = (r.files || []).find((x) => String(x.n) === n);
+  if (f?.upload) {
+    // Chunked file: ?part=i returns one piece; a one-piece file downloads directly.
+    const part = url.searchParams.get("part");
+    if (part === null && f.chunks > 1) throw new HttpError(400, "Download this file in parts (?part=0…).");
+    const data = await getChunk(f.upload, part ?? 0);
+    if (!data) throw new HttpError(404, "File not found");
+    const name = f.name.replace(/["\\\r\n]/g, "_");
+    return new Response(data, { headers: {
+      "content-type": "application/octet-stream",
+      ...(part === null ? { "content-disposition": `attachment; filename="${name}"` } : {}),
+      "cache-control": "private, no-store",
+    } });
+  }
   const res = await stores.files().getWithMetadata(`${id}/${n}`, { type: "arrayBuffer" });
   if (!res) throw new HttpError(404, "File not found");
   const name = (res.metadata?.name || "file").replace(/["\\\r\n]/g, "_");
@@ -300,7 +324,7 @@ route("DELETE", "/admin/requests/([\\w-]+)", async ({ req, params: [id] }) => {
   await Promise.all([
     reqs.delete(`req/${id}`),
     reqs.delete(`by-email/${r.email}/${id}`),
-    ...(r.files || []).map((f) => stores.files().delete(`${id}/${f.n}`)),
+    ...(r.files || []).map((f) => (f.upload ? deleteUpload(f.upload) : stores.files().delete(`${id}/${f.n}`))),
   ]);
   return json({ ok: true });
 });

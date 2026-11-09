@@ -3,6 +3,7 @@
 Static site (`index.html`) plus a Netlify Functions API (`netlify/functions/api.mjs`) with data in Netlify Blobs.
 
 - `/` — public site. Customers sign in at `/account` with an emailed 6-digit code to track quotes/orders.
+- Customer files (up to 100 MB each, 200 MB per request) upload in 3 MB pieces via `/api/uploads` (`netlify/lib/uploads.mjs`), since a function request/response is capped near 6 MB; downloads join the pieces in the browser. A daily scheduled function (`cleanup.mjs`) deletes uploads from forms never submitted.
 - `/admin/` — admin app: requests (status, price, message to customer), stock products + photos, materials & colors, site settings, customers.
 
 ## Netlify environment variables

@@ -8,7 +8,8 @@ export const stores = {
   auth: () => store("auth"),         // code:<email>, sess:<sha256(token)>
   users: () => store("users"),       // <email> -> profile
   requests: () => store("requests"), // <id> -> quote/order record
-  files: () => store("files"),       // <requestId>/<n> -> customer attachment
+  files: () => store("files"),       // <requestId>/<n> -> small attachment (older requests)
+  uploads: () => store("uploads"),   // chunked customer files, see uploads.mjs
   site: () => store("site"),         // materials, catalog, settings
   images: () => store("images"),     // <id> -> product photo
 };

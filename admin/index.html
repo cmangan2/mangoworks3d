@@ -457,7 +457,7 @@
         </dl>
         ${r.items && r.items.length ? `<label style="margin-top:1rem;">Items</label><ul class="items">${r.items.map(i => `<li>${esc(i.name)} — ${esc(i.material)}, ${esc(i.color)} × ${i.qty}</li>`).join('')}</ul>` : ''}
         ${r.message ? `<label style="margin-top:1rem;">Message</label><div class="pre">${esc(r.message)}</div>` : ''}
-        ${r.files && r.files.length ? `<label style="margin-top:1rem;">Files</label>${r.files.map(f => `<div><a href="/api/files/${encodeURIComponent(r.id)}/${f.n}">📎 ${esc(f.name)}</a> <span class="muted">(${Math.max(1, Math.round(f.size / 1024))} KB)</span></div>`).join('')}` : ''}
+        ${r.files && r.files.length ? `<label style="margin-top:1rem;">Files</label>${r.files.map(f => `<div><a href="/api/files/${encodeURIComponent(r.id)}/${f.n}" onclick='downloadFile(${JSON.stringify(r.id)}, ${esc(JSON.stringify(f))}, this); return false;'>📎 ${esc(f.name)}</a> <span class="muted">(${fmtSize(f.size)})</span></div>`).join('')}` : ''}
       </div>
       <div class="card" style="display:flex;flex-direction:column;gap:0.9rem;">
         <div class="grid2">
@@ -473,6 +473,30 @@
     $('d-status').addEventListener('change', () => { $('d-notify').checked = $('d-status').value !== r.status; });
     d.classList.add('open'); $('overlay').classList.add('open');
     history.replaceState(null, '', '#' + id);
+  }
+
+  const fmtSize = (b) => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+
+  // Big files are stored in pieces: fetch each piece and join them here.
+  async function downloadFile(reqId, f, link) {
+    const base = `/api/files/${encodeURIComponent(reqId)}/${f.n}`;
+    if (!f.chunks || f.chunks === 1) { location.href = base; return; }
+    const label = link.textContent;
+    try {
+      const parts = [];
+      for (let i = 0; i < f.chunks; i++) {
+        link.textContent = `Downloading… ${Math.floor(100 * i / f.chunks)}%`;
+        const res = await fetch(`${base}?part=${i}`, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Download failed');
+        parts.push(await res.blob());
+      }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(parts, { type: 'application/octet-stream' }));
+      a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    } catch (e) { toast(e.message); }
+    link.textContent = label;
   }
 
   async function saveRequest() {

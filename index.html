@@ -648,16 +648,16 @@
 <body>
 
 <nav>
-  <a href="#" onclick="showPage('home')" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+  <a href="#" onclick="showPage('home'); return false;" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
     <img class="nav-logo-img" src="/images/logo.png" alt="" width="48" height="48"/>
     <span class="nav-logo" style="text-decoration:none;">MANGO<span style="color:var(--text)">WORKS</span>3D</span>
   </a>
   <div class="nav-right">
     <ul class="nav-links">
-      <li><a href="#" onclick="showPage('home')">Home</a></li>
-      <li><a href="#" onclick="showPage('shop')">Shop Designs</a></li>
-      <li><a href="#services">Services</a></li>
-      <li><a href="#" onclick="showPage('request')" class="nav-cta">Get a Quote</a></li>
+      <li><a href="#" onclick="showPage('home'); return false;">Home</a></li>
+      <li><a href="#" onclick="showPage('shop'); return false;">Shop Designs</a></li>
+      <li><a href="#services" onclick="goServices(); return false;">Services</a></li>
+      <li><a href="#" onclick="showPage('request'); return false;" class="nav-cta">Get a Quote</a></li>
     </ul>
     <a href="/admin/" class="nav-admin" id="nav-admin" title="Admin" style="display:none">🛠️</a>
     <a href="/account" class="nav-account" id="nav-account" onclick="showPage('account'); return false;">Sign in</a>
@@ -830,7 +830,7 @@
           <div class="file-drop" onclick="document.getElementById('fileInput').click()">
             <div class="drop-icon">📎</div>
             <p><span>Click to upload</span> or drag & drop your STEP, STL, 3MF, or image file</p>
-            <p style="font-size:0.78rem; margin-top:6px;">Max 5 MB · <strong style="color:var(--mango);">STEP / STP preferred</strong> · STL, 3MF, OBJ, PNG, JPG · Bigger file? Paste a share link in the description.</p>
+            <p style="font-size:0.78rem; margin-top:6px;">Up to 100 MB per file · <strong style="color:var(--mango);">STEP / STP preferred</strong> · STL, 3MF, OBJ, PNG, JPG</p>
             <input type="file" id="fileInput" style="display:none" accept=".step,.stp,.stl,.3mf,.obj,.png,.jpg,.jpeg"/>
           </div>
           <p id="file-chosen" style="font-size:0.85rem; color:var(--teal); margin-top:6px; display:none;"></p>
@@ -1014,7 +1014,7 @@
 
   async function api(path, opts = {}) {
     const headers = { ...(opts.headers || {}) };
-    if (opts.body && !(opts.body instanceof FormData) && typeof opts.body !== 'string') {
+    if (opts.body && !(opts.body instanceof FormData) && !(opts.body instanceof Blob) && typeof opts.body !== 'string') {
       headers['content-type'] = 'application/json';
       opts = { ...opts, body: JSON.stringify(opts.body) };
     }
@@ -1318,21 +1318,32 @@
     }, 300);
   }
 
-  function showPage(name) {
+  let currentPage = 'home';
+  function goServices() {
+    showPage('home');
+    setTimeout(() => document.getElementById('services').scrollIntoView({ behavior: 'smooth' }), 60);
+  }
+  function showPage(name, fromHistory) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
     window.scrollTo({top: 0, behavior: 'smooth'});
-    const path = name === 'account' ? '/account' : '/';
-    if (location.pathname !== path) history.pushState({ page: name }, '', path);
+    // Each page gets a history entry so the phone's back button steps between pages.
+    if (!fromHistory && name !== currentPage) {
+      history.pushState({ page: name }, '', name === 'account' ? '/account' : '/');
+    }
+    currentPage = name;
     if (name === 'shop') { loadData().then(() => buildShop()); }
     if (name === 'account') renderAccount();
   }
-  window.addEventListener('popstate', () => {
-    showPage(location.pathname.startsWith('/account') ? 'account' : 'home');
+  window.addEventListener('popstate', (e) => {
+    // Plain #anchor jumps (e.g. #services) carry no state: leave them alone.
+    const page = (e.state && e.state.page) || (location.pathname.startsWith('/account') ? 'account' : (location.hash ? null : 'home'));
+    if (page && page !== currentPage) showPage(page, true);
   });
 
   window.addEventListener('DOMContentLoaded', async () => {
-    if (location.pathname.startsWith('/account')) showPage('account');
+    if (location.pathname.startsWith('/account')) { currentPage = 'account'; showPage('account', true); }
+    history.replaceState({ page: currentPage }, '', location.pathname + location.hash);
     loadMe();
     await loadData();
     buildShop();
@@ -1460,7 +1471,7 @@
           </div>
           ${r.items && r.items.length ? `<ul class="req-items">${r.items.map(i => `<li>${esc(i.name)} — ${esc(i.material)}, ${esc(i.color)} × ${i.qty}</li>`).join('')}</ul>` : ''}
           ${r.message ? `<div class="req-body" style="margin-top:0.5rem;">${esc(r.message)}</div>` : ''}
-          ${r.files && r.files.length ? `<div class="req-files" style="margin-top:0.5rem;">${r.files.map(f => `<a href="/api/files/${encodeURIComponent(r.id)}/${f.n}">📎 ${esc(f.name)}</a>`).join('')}</div>` : ''}
+          ${r.files && r.files.length ? `<div class="req-files" style="margin-top:0.5rem;">${r.files.map(f => `<a href="/api/files/${encodeURIComponent(r.id)}/${f.n}" onclick='downloadFile(${JSON.stringify(r.id)}, ${esc(JSON.stringify(f))}, this); return false;'>📎 ${esc(f.name)}</a>`).join('')}</div>` : ''}
           ${(r.price || r.customerMessage) ? `<div class="req-quote">
             ${r.price ? `<div class="price">${esc(r.price)}</div>` : ''}
             ${r.customerMessage ? `<div class="req-body" style="color:var(--text);">${esc(r.customerMessage)}</div>` : ''}
@@ -1502,6 +1513,55 @@
     }
   });
 
+  const MAX_FILE_MB = 100, MAX_TOTAL_MB = 200;
+
+  // Send a file in the server's chunk size, two chunks at a time. Returns the upload id.
+  async function uploadFile(file, onProgress) {
+    const { id, chunkSize, chunks } = await api('/uploads', { method: 'POST', body: { name: file.name, size: file.size, type: file.type } });
+    let next = 0, sent = 0;
+    async function worker() {
+      while (next < chunks) {
+        const i = next++;
+        const part = file.slice(i * chunkSize, Math.min(file.size, (i + 1) * chunkSize));
+        for (let attempt = 1; ; attempt++) {
+          try {
+            await api(`/uploads/${id}/${i}`, { method: 'PUT', body: part, headers: { 'content-type': 'application/octet-stream' } });
+            break;
+          } catch (e) {
+            if (attempt >= 3 || (e.status && e.status < 500)) throw e;
+            await new Promise(r => setTimeout(r, 1000 * attempt));
+          }
+        }
+        sent += part.size;
+        onProgress(sent);
+      }
+    }
+    await Promise.all([worker(), worker()]);
+    return id;
+  }
+
+  // Files uploaded in pieces are fetched piece by piece and joined here.
+  async function downloadFile(reqId, f, link) {
+    const base = `/api/files/${encodeURIComponent(reqId)}/${f.n}`;
+    if (!f.chunks || f.chunks === 1) { location.href = base; return; }
+    const label = link.textContent;
+    try {
+      const parts = [];
+      for (let i = 0; i < f.chunks; i++) {
+        link.textContent = `Downloading… ${Math.floor(100 * i / f.chunks)}%`;
+        const res = await fetch(`${base}?part=${i}`, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Download failed');
+        parts.push(await res.blob());
+      }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(parts, { type: 'application/octet-stream' }));
+      a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    } catch (e) { alert(e.message); }
+    link.textContent = label;
+  }
+
   async function submitForm() {
     const name = document.getElementById('name').value.trim();
     const email = document.getElementById('email').value.trim();
@@ -1524,13 +1584,38 @@
     const btn = document.querySelector('.form-submit .btn-primary');
     const fileInput = document.getElementById('fileInput');
     const files = [fileInput.files[0], ...cart.filter(i => i.file).map(i => i.file)].filter(Boolean);
-    const totalSize = files.reduce((s, f) => s + f.size, 0);
-    if (totalSize > 5 * 1024 * 1024) {
-      alert('Your files add up to more than 5 MB. Please paste a share link (Google Drive, Dropbox…) in the description, or email the files to mangoworks3D@gmail.com, and remove them here.');
+    const MB = 1024 * 1024;
+    const tooBig = files.find(f => f.size > MAX_FILE_MB * MB);
+    if (tooBig) {
+      alert(`“${tooBig.name}” is over ${MAX_FILE_MB} MB. Please paste a share link (Google Drive, Dropbox…) in the description instead, and remove it here.`);
+      return;
+    }
+    if (files.reduce((s, f) => s + f.size, 0) > MAX_TOTAL_MB * MB) {
+      alert(`Your files add up to more than ${MAX_TOTAL_MB} MB. Please paste a share link for the biggest ones in the description instead.`);
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    // Upload files in pieces first (handles big STEP files), then send the request.
+    const uploadIds = [];
+    try {
+      const totalBytes = files.reduce((s, f) => s + f.size, 0);
+      let doneBytes = 0;
+      for (const f of files) {
+        uploadIds.push(await uploadFile(f, (bytes) => {
+          btn.textContent = `Uploading ${f.name}… ${Math.floor(100 * (doneBytes + bytes) / totalBytes)}%`;
+        }));
+        doneBytes += f.size;
+      }
+    } catch (err) {
+      btn.textContent = 'Send My Request →';
+      btn.disabled = false;
+      alert((err.status && err.status < 500) ? err.message
+        : 'The file upload failed. Check your connection and try again, or email the file to mangoworks3D@gmail.com.');
       return;
     }
     btn.textContent = 'Sending…';
-    btn.disabled = true;
 
     const items = cart.map(i => ({ name: i.name, material: i.material, color: i.color, qty: i.qty, productId: i.productId || '' }));
     const apiData = new FormData();
@@ -1543,7 +1628,7 @@
     apiData.append('message', description);
     apiData.append('items', JSON.stringify(items));
     apiData.append('website', document.getElementById('website').value);
-    files.forEach(f => apiData.append('attachment', f));
+    apiData.append('uploads', JSON.stringify(uploadIds));
 
     try {
       const r = await api('/requests', { method: 'POST', body: apiData });
