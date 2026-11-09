@@ -23,11 +23,22 @@ export async function startLogin(rawEmail, siteUrl) {
   if (sentToday >= MAX_CODES_PER_DAY) throw new HttpError(429, "Too many sign-in codes today. Try again tomorrow, or email mangoworks3D@gmail.com.");
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
   await auth.setJSON(`code:${email}`, { hash: sha256(`${email}:${code}`), exp: Date.now() + CODE_TTL_MS, tries: 0, sentAt: Date.now(), day, sentToday: sentToday + 1 });
-  await sendMail({
-    to: email,
-    subject: `Your MangoWorks3D sign-in code: ${code}`,
-    text: `Your MangoWorks3D sign-in code is ${code}\n\nIt expires in 10 minutes. If you didn't ask for it, you can ignore this email.\n\n${siteUrl}`,
-  });
+  const devMode = env("MW_DEV_SHOW_CODE") === "1";
+  if (!mailConfigured() && !devMode) {
+    await auth.delete(`code:${email}`);
+    throw new HttpError(503, "Sign-in emails aren't set up on the server yet (SMTP settings missing in Netlify, or the site wasn't redeployed after adding them).");
+  }
+  try {
+    await sendMail({
+      to: email,
+      subject: `Your MangoWorks3D sign-in code: ${code}`,
+      text: `Your MangoWorks3D sign-in code is ${code}\n\nIt expires in 10 minutes. If you didn't ask for it, you can ignore this email.\n\n${siteUrl}`,
+    });
+  } catch (e) {
+    console.error("sign-in email failed:", e);
+    await auth.setJSON(`code:${email}`, { ...(prev || {}), sentAt: 0, exp: 0, tries: MAX_TRIES, day, sentToday });
+    throw new HttpError(502, `Couldn't send the sign-in email: ${describeMailError(e)}`);
+  }
   // Local development without email: hand the code back so the flow can be tested.
   return env("MW_DEV_SHOW_CODE") === "1" && !mailConfigured() ? { devCode: code } : {};
 }
@@ -54,6 +65,14 @@ export async function verifyLogin(rawEmail, rawCode) {
   const token = randomToken();
   await auth.setJSON(`sess:${sha256(token)}`, { email, exp: Date.now() + SESSION_TTL_MS });
   return { token, user };
+}
+
+// Plain-English reason for a failed send (no secrets in these messages).
+function describeMailError(e) {
+  const code = e?.code || "";
+  if (code === "EAUTH" || e?.responseCode === 535) return "the mail server rejected the username/password (check SMTP_USER and that SMTP_PASS is the 16-letter app password).";
+  if (["ECONNECTION", "ETIMEDOUT", "ESOCKET", "EDNS", "ENOTFOUND", "ECONNREFUSED"].includes(code)) return `couldn't connect to the mail server (check SMTP_HOST and SMTP_PORT). [${code}]`;
+  return `${code || "error"}${e?.responseCode ? " " + e.responseCode : ""}.`;
 }
 
 export function sessionCookie(token, secure) {

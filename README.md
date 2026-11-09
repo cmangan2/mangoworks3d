@@ -14,7 +14,7 @@ Static site (`index.html`) plus a Netlify Functions API (`netlify/functions/api.
 | `MAIL_FROM` | Optional, e.g. `MangoWorks3D <mangoworks3d@gmail.com>`. |
 | `RESEND_API_KEY` | Optional alternative to SMTP (needs a verified domain in Resend). |
 
-Without mail settings, sign-in codes and notifications are only written to the function log.
+Without mail settings, sign-in refuses with a message saying email isn't set up (unless `MW_DEV_SHOW_CODE=1` locally), and notifications are only written to the function log.
 
 ## Local development
 
