@@ -1,0 +1,16 @@
+{
+  "name": "mangoworks3d",
+  "private": true,
+  "type": "module",
+  "description": "MangoWorks3D site: static index.html + Netlify Functions API (accounts, quotes/orders, admin).",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.9",
+    "nodemailer": "^10.4.0"
+  }
+}

@@ -1,3 +1,11 @@
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# /api/* is served by netlify/functions/api.mjs (its config.path), ahead of this.
 [[redirects]]
   from = "/*"
   to = "/index.html"

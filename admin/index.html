@@ -1,13 +1,684 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MangoWorks3D — Admin</title>
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="robots" content="noindex"/>
+<title>MangoWorks3D Admin</title>
+<link rel="icon" type="image/png" href="/images/favicon.png">
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --mango: #FF8C00; --mango-light: #FFB347; --teal: #00C9A7; --red: #FF6B6B;
+    --bg: #0D0D0D; --bg2: #151515; --bg3: #1E1E1E; --line: rgba(255,255,255,0.09);
+    --text: #F5F5F0; --text-muted: #A0A0A0; --radius: 14px;
+  }
+  body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  a { color: var(--mango); }
+  button { font-family: inherit; }
+  input, select, textarea {
+    width: 100%; background: var(--bg3); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+    color: var(--text); font-family: inherit; font-size: 0.95rem; padding: 0.6rem 0.8rem; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--mango); }
+  textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+  label { display: block; font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem; }
+  .muted { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; }
+
+  header {
+    position: sticky; top: 0; z-index: 20; background: rgba(13,13,13,0.95); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255,140,0,0.15);
+  }
+  .bar { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1.5rem; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 8px; text-decoration: none; margin-right: auto; }
+  .brand img { width: 36px; height: 36px; }
+  .brand span { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 2px; color: var(--mango); }
+  .brand small { font-family: 'Nunito', sans-serif; font-size: 0.7rem; font-weight: 900; letter-spacing: 2px; color: var(--text-muted); margin-left: 4px; }
+  .who { font-size: 0.82rem; color: var(--text-muted); }
+  .tabs { display: flex; gap: 0.25rem; padding: 0 1.5rem; overflow-x: auto; scrollbar-width: none; }
+  .tab {
+    background: none; border: none; color: var(--text-muted); font-weight: 800; font-size: 0.92rem;
+    padding: 0.7rem 0.9rem; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap;
+  }
+  .tab.active { color: var(--mango); border-bottom-color: var(--mango); }
+  .tab .count { background: var(--mango); color: #000; border-radius: 50px; font-size: 0.7rem; padding: 0 6px; margin-left: 4px; }
+
+  main { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem; }
+  .card + .card { margin-top: 1rem; }
+  h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 1px; }
+  .row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .toolbar { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+  .toolbar select, .toolbar input { width: auto; min-width: 160px; }
+  .toolbar input { flex: 1; }
+
+  .btn {
+    background: var(--mango); color: #000; border: none; border-radius: 50px; padding: 0.6rem 1.25rem;
+    font-weight: 900; font-size: 0.9rem; cursor: pointer; white-space: nowrap;
+  }
+  .btn:hover { background: var(--mango-light); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-ghost {
+    background: var(--bg3); color: var(--text); border: 1px solid rgba(255,255,255,0.15); border-radius: 50px;
+    padding: 0.5rem 1rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; white-space: nowrap; text-decoration: none;
+  }
+  .btn-ghost:hover { border-color: var(--mango); }
+  .btn-danger { color: var(--red); }
+  .icon-btn { background: var(--bg3); border: 1px solid rgba(255,255,255,0.12); color: var(--text); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; flex-shrink: 0; }
+  .icon-btn:hover { border-color: var(--mango); }
+
+  .status-badge { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 50px; font-size: 0.7rem; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; background: rgba(255,255,255,0.08); white-space: nowrap; }
+  .st-new { background: rgba(160,160,160,0.18); color: #DDD; }
+  .st-reviewing { background: rgba(33,150,243,0.18); color: #6CB8FF; }
+  .st-quoted { background: rgba(255,140,0,0.2); color: var(--mango); }
+  .st-approved { background: rgba(0,201,167,0.18); color: var(--teal); }
+  .st-printing { background: rgba(124,58,237,0.22); color: #B08CFF; }
+  .st-ready, .st-shipped { background: rgba(0,201,167,0.18); color: var(--teal); }
+  .st-completed { background: rgba(139,195,74,0.2); color: #A5D86A; }
+  .st-cancelled { background: rgba(230,57,70,0.18); color: var(--red); }
+
+  .req-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; align-items: center;
+    background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem 1.25rem; margin-bottom: 0.6rem; cursor: pointer;
+  }
+  .req-row:hover { border-color: rgba(255,140,0,0.5); }
+  .req-row .title { font-weight: 900; }
+  .req-row .sub { color: var(--text-muted); font-size: 0.82rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .req-row select { width: auto; font-size: 0.85rem; padding: 0.4rem 0.6rem; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 50; display: none; }
+  .overlay.open { display: block; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); z-index: 60;
+    background: var(--bg); border-left: 1px solid rgba(255,140,0,0.25); overflow-y: auto;
+    transform: translateX(100%); transition: transform 0.2s;
+  }
+  .drawer.open { transform: none; }
+  .drawer-head { position: sticky; top: 0; background: var(--bg); padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 0.75rem; z-index: 2; }
+  .drawer-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+  .kv { display: grid; grid-template-columns: 90px 1fr; gap: 0.35rem 0.75rem; font-size: 0.9rem; }
+  .kv dt { color: var(--text-muted); }
+  .kv dd { overflow-wrap: anywhere; }
+  .pre { white-space: pre-wrap; font-size: 0.9rem; line-height: 1.55; overflow-wrap: anywhere; }
+  .items { padding-left: 1.1rem; line-height: 1.7; font-size: 0.92rem; }
+  .history { font-size: 0.82rem; color: var(--text-muted); line-height: 1.7; }
+  .check { display: flex; gap: 0.5rem; align-items: center; font-size: 0.9rem; cursor: pointer; }
+  .check input { width: auto; }
+
+  .prod-row { display: flex; gap: 1rem; align-items: center; }
+  .prod-thumb { width: 64px; height: 64px; border-radius: 10px; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; overflow: hidden; flex-shrink: 0; }
+  .prod-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .pill { font-size: 0.7rem; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 50px; background: rgba(255,255,255,0.08); color: var(--text-muted); }
+  .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.6rem; }
+  .photo { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--bg3); border: 2px solid transparent; }
+  .photo.main { border-color: var(--mango); }
+  .photo img { width: 100%; height: 100%; object-fit: cover; }
+  .photo .ops { position: absolute; left: 4px; right: 4px; bottom: 4px; display: flex; justify-content: space-between; }
+  .photo .ops button { background: rgba(0,0,0,0.75); color: #fff; border: none; border-radius: 6px; font-size: 0.75rem; padding: 2px 6px; cursor: pointer; }
+  .photo .tag { position: absolute; top: 4px; left: 4px; background: var(--mango); color: #000; font-size: 0.65rem; font-weight: 900; padding: 1px 6px; border-radius: 6px; }
+  .add-photo { aspect-ratio: 1; border: 2px dashed rgba(255,140,0,0.4); border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--mango); font-weight: 800; font-size: 0.85rem; cursor: pointer; }
+
+  .mat-card .colors { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
+  .color-row { display: flex; gap: 0.5rem; align-items: center; }
+  .color-row input[type=color] { width: 44px; height: 38px; padding: 2px; flex-shrink: 0; cursor: pointer; }
+  .color-row .hex { width: 100px; flex-shrink: 0; font-family: monospace; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--line); }
+  th { color: var(--text-muted); font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
+  td a { text-decoration: none; }
+
+  .center-card { max-width: 440px; margin: 12vh auto 0; }
+  .error { color: var(--red); font-weight: 700; font-size: 0.9rem; min-height: 1.2em; margin-top: 0.75rem; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(150%);
+    background: var(--bg3); border: 1px solid rgba(255,140,0,0.4); color: var(--text); font-weight: 700;
+    padding: 0.7rem 1.2rem; border-radius: 50px; z-index: 100; transition: transform 0.2s; max-width: calc(100% - 32px);
+  }
+  .toast.show { transform: translateX(-50%); }
+  .savebar { position: sticky; bottom: 0; background: rgba(13,13,13,0.95); padding: 0.75rem 0; margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; border-top: 1px solid var(--line); }
+  .dirty { color: var(--mango); font-weight: 800; font-size: 0.85rem; }
+
+  @media (max-width: 640px) {
+    .bar { padding: 0.6rem 1rem; }
+    .tabs { padding: 0 0.5rem; }
+    main { padding: 1rem; }
+    .grid2 { grid-template-columns: 1fr; }
+    .req-row { grid-template-columns: 1fr; }
+    .who { display: none; }
+    .hide-sm { display: none; }
+  }
+</style>
 </head>
 <body>
-  <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+
+<header>
+  <div class="bar">
+    <a href="/" class="brand"><img src="/images/logo.png" alt=""/><span>MANGOWORKS3D</span><small>ADMIN</small></a>
+    <span class="who" id="who"></span>
+    <a href="/" class="btn-ghost">View site</a>
+    <button class="btn-ghost" id="signout-btn" onclick="signOut()" style="display:none">Sign out</button>
+  </div>
+  <nav class="tabs" id="tabs" style="display:none">
+    <button class="tab active" data-tab="requests">Requests <span class="count" id="new-count" style="display:none"></span></button>
+    <button class="tab" data-tab="products">Products</button>
+    <button class="tab" data-tab="materials">Materials &amp; Colors</button>
+    <button class="tab" data-tab="settings">Settings</button>
+    <button class="tab" data-tab="customers">Customers</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Sign in -->
+  <div id="signin" class="card center-card" style="display:none">
+    <h2>Admin sign in</h2>
+    <p class="muted" style="margin-bottom:1rem;">We'll email you a 6-digit code.</p>
+    <div id="si-email-step">
+      <label>Email</label>
+      <input type="email" id="si-email" autocomplete="email" placeholder="you@example.com"/>
+      <button class="btn" style="margin-top:1rem;width:100%;" onclick="sendCode()">Email me a code →</button>
+    </div>
+    <div id="si-code-step" style="display:none">
+      <p class="muted">Code sent to <strong id="si-sent"></strong></p>
+      <input type="text" id="si-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="margin-top:0.75rem;letter-spacing:6px;font-size:1.3rem;font-weight:900;text-align:center;"/>
+      <button class="btn" style="margin-top:1rem;width:100%;" onclick="verifyCode()">Sign in →</button>
+      <p style="margin-top:0.75rem;font-size:0.85rem;"><a href="#" onclick="resetSignin(); return false;">Use a different email</a></p>
+    </div>
+    <div class="error" id="si-error"></div>
+  </div>
+
+  <div id="not-admin" class="card center-card" style="display:none">
+    <h2>Not an admin account</h2>
+    <p class="muted">You're signed in as <strong id="na-email"></strong>, which doesn't have admin access.</p>
+    <div class="row" style="margin-top:1rem;"><a class="btn-ghost" href="/account">My orders</a><button class="btn-ghost" onclick="signOut()">Sign out</button></div>
+  </div>
+
+  <!-- Requests -->
+  <section class="panel active" id="panel-requests" style="display:none">
+    <div class="toolbar">
+      <select id="f-status"></select>
+      <input type="search" id="f-search" placeholder="Search name, email, reference, text…"/>
+      <button class="btn-ghost" onclick="loadRequests()">↻ Refresh</button>
+    </div>
+    <div id="req-list"><p class="muted">Loading…</p></div>
+  </section>
+
+  <!-- Products -->
+  <section class="panel" id="panel-products">
+    <div class="toolbar">
+      <h2 class="grow">Stock Products</h2>
+      <button class="btn" onclick="editProduct()">+ Add product</button>
+    </div>
+    <p class="muted" style="margin-bottom:1rem;">These show on the Shop page and in the home page showcase. Hidden products stay here but don't show on the site. Use ↑ ↓ to set the order.</p>
+    <div id="prod-list"></div>
+  </section>
+
+  <!-- Materials -->
+  <section class="panel" id="panel-materials">
+    <div class="toolbar">
+      <h2 class="grow">Materials &amp; Colors</h2>
+      <button class="btn-ghost" onclick="addMaterial()">+ Add material</button>
+    </div>
+    <p class="muted" style="margin-bottom:1rem;">Shown in the materials popup, the quote form and the shop. Each material has its own color list.</p>
+    <div id="mat-list"></div>
+    <div class="savebar"><button class="btn" onclick="saveMaterials()">Save materials</button><span class="dirty" id="mat-dirty"></span></div>
+  </section>
+
+  <!-- Settings -->
+  <section class="panel" id="panel-settings">
+    <h2 style="margin-bottom:1rem;">Site Settings</h2>
+    <div class="card">
+      <label>Announcement banner</label>
+      <input type="text" id="s-announcement" maxlength="300" placeholder="e.g. Holiday orders must be in by Dec 10 — leave empty to hide"/>
+      <p class="muted" style="margin-top:0.35rem;font-size:0.8rem;">Shown as an orange bar across the top of every page.</p>
+    </div>
+    <div class="card">
+      <label>Home page badge</label>
+      <input type="text" id="s-heroBadge" maxlength="60" placeholder="Leave empty to hide"/>
+      <p class="muted" style="margin-top:0.35rem;font-size:0.8rem;">The small pill above “YOUR IDEAS PRINTED.”</p>
+    </div>
+    <div class="card">
+      <label>Send new-request alerts to</label>
+      <input type="email" id="s-notifyEmail" maxlength="200"/>
+      <p class="muted" style="margin-top:0.35rem;font-size:0.8rem;">Every new quote/order and every quote a customer approves is emailed here.</p>
+    </div>
+    <div class="savebar"><button class="btn" onclick="saveSettings()">Save settings</button></div>
+  </section>
+
+  <!-- Customers -->
+  <section class="panel" id="panel-customers">
+    <div class="toolbar"><h2 class="grow">Customers</h2><button class="btn-ghost" onclick="loadCustomers()">↻ Refresh</button></div>
+    <div class="card" style="overflow-x:auto;"><table><thead><tr><th>Name</th><th>Email</th><th class="hide-sm">Phone</th><th>Requests</th><th class="hide-sm">Account</th></tr></thead><tbody id="cust-body"></tbody></table></div>
+  </section>
+</main>
+
+<!-- Request detail drawer -->
+<div class="overlay" id="overlay" onclick="closeDrawers()"></div>
+<aside class="drawer" id="req-drawer">
+  <div class="drawer-head"><button class="icon-btn" onclick="closeDrawers()">✕</button><strong id="d-title" class="grow"></strong><span id="d-badge"></span></div>
+  <div class="drawer-body" id="d-body"></div>
+</aside>
+
+<!-- Product editor drawer -->
+<aside class="drawer" id="prod-drawer">
+  <div class="drawer-head"><button class="icon-btn" onclick="closeDrawers()">✕</button><strong class="grow" id="p-title">Product</strong></div>
+  <div class="drawer-body">
+    <div><label>Name</label><input type="text" id="p-name" maxlength="100"/></div>
+    <div class="grid2">
+      <div><label>Price (optional)</label><input type="text" id="p-price" maxlength="40" placeholder="e.g. $15 or From $12"/></div>
+      <div><label>Placeholder emoji</label><input type="text" id="p-emoji" maxlength="8" placeholder="🖨️"/></div>
+    </div>
+    <div><label>Description</label><textarea id="p-desc" maxlength="1500"></textarea></div>
+    <label class="check"><input type="checkbox" id="p-active"/> Show on the site</label>
+    <div>
+      <label>Photos <span style="text-transform:none;letter-spacing:0;font-weight:600;">(first one is the main photo)</span></label>
+      <div class="photos" id="p-photos"></div>
+      <input type="file" id="p-file" accept="image/*" multiple style="display:none"/>
+      <p class="muted" id="p-upload-status" style="margin-top:0.5rem;font-size:0.82rem;"></p>
+    </div>
+    <div class="row" style="margin-top:0.5rem;">
+      <button class="btn" onclick="saveProduct()">Save product</button>
+      <button class="btn-ghost" onclick="closeDrawers()">Cancel</button>
+      <span class="grow"></span>
+      <button class="btn-ghost btn-danger" id="p-delete" onclick="deleteProduct()">Delete</button>
+    </div>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const $ = (id) => document.getElementById(id);
+  const fmtDate = (iso) => new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  let ME = null, STATUSES = [], REQUESTS = [], CATALOG = { items: [] }, MATERIALS = { items: [] };
+
+  async function api(path, opts = {}) {
+    const headers = { ...(opts.headers || {}) };
+    let body = opts.body;
+    if (body && !(body instanceof Blob) && typeof body !== 'string') { headers['content-type'] = 'application/json'; body = JSON.stringify(body); }
+    const res = await fetch('/api' + path, { ...opts, body, headers, credentials: 'same-origin' });
+    let data = {};
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) {
+      const e = new Error(data.error || 'Request failed (' + res.status + ')'); e.status = res.status;
+      if (res.status === 401 && ME) { ME = null; boot(); }
+      throw e;
+    }
+    return data;
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  // ── Sign-in ──
+  async function boot() {
+    try { ME = await api('/auth/me'); } catch (e) { ME = { signedIn: false }; }
+    const signedIn = ME && ME.signedIn;
+    $('signin').style.display = signedIn ? 'none' : '';
+    $('not-admin').style.display = signedIn && !ME.admin ? '' : 'none';
+    $('signout-btn').style.display = signedIn ? '' : 'none';
+    $('who').textContent = signedIn ? ME.email : '';
+    const admin = signedIn && ME.admin;
+    $('tabs').style.display = admin ? '' : 'none';
+    document.querySelectorAll('.panel').forEach(p => p.style.display = admin ? '' : 'none');
+    if (!signedIn) return;
+    if (!admin) { $('na-email').textContent = ME.email; return; }
+    showTab(location.hash.startsWith('#tab-') ? location.hash.slice(5) : 'requests');
+    await Promise.all([loadRequests(), loadSite()]);
+    const ref = location.hash.slice(1);
+    if (/^MW-/.test(ref)) openRequest(ref);
+  }
+
+  async function sendCode() {
+    const email = $('si-email').value.trim();
+    $('si-error').textContent = '';
+    try {
+      const r = await api('/auth/start', { method: 'POST', body: { email } });
+      $('si-sent').textContent = email;
+      $('si-email-step').style.display = 'none'; $('si-code-step').style.display = '';
+      $('si-code').value = r.devCode || ''; $('si-code').focus();
+    } catch (e) { $('si-error').textContent = e.message; }
+  }
+  async function verifyCode() {
+    $('si-error').textContent = '';
+    try {
+      await api('/auth/verify', { method: 'POST', body: { email: $('si-email').value.trim(), code: $('si-code').value.trim() } });
+      resetSignin(); boot();
+    } catch (e) { $('si-error').textContent = e.message; }
+  }
+  function resetSignin() { $('si-email-step').style.display = ''; $('si-code-step').style.display = 'none'; $('si-error').textContent = ''; }
+  $('si-email').addEventListener('keydown', e => { if (e.key === 'Enter') sendCode(); });
+  $('si-code').addEventListener('keydown', e => { if (e.key === 'Enter') verifyCode(); });
+  async function signOut() { try { await api('/auth/logout', { method: 'POST' }); } catch (e) {} ME = null; boot(); }
+
+  // ── Tabs ──
+  function showTab(name) {
+    if (!$('panel-' + name)) name = 'requests';
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    if (name === 'customers') loadCustomers();
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    showTab(t.dataset.tab);
+    history.replaceState(null, '', '#tab-' + t.dataset.tab);
+  }));
+
+  // ── Requests ──
+  const statusLabel = (id) => (STATUSES.find(s => s.id === id) || {}).label || id;
+  const badge = (s) => `<span class="status-badge st-${esc(s)}">${esc(statusLabel(s))}</span>`;
+  const statusOptions = (cur) => STATUSES.map(s => `<option value="${s.id}"${s.id === cur ? ' selected' : ''}>${esc(s.label)}</option>`).join('');
+  const CLOSED = ['completed', 'cancelled'];
+
+  async function loadRequests() {
+    try {
+      const d = await api('/admin/requests');
+      REQUESTS = d.items; STATUSES = d.statuses;
+      const f = $('f-status'), cur = f.value || 'active';
+      f.innerHTML = `<option value="active">Open (not completed/cancelled)</option><option value="all">All</option>` +
+        STATUSES.map(s => `<option value="${s.id}">${esc(s.label)} (${REQUESTS.filter(r => r.status === s.id).length})</option>`).join('');
+      f.value = cur;
+      const n = REQUESTS.filter(r => r.status === 'new').length;
+      $('new-count').textContent = n; $('new-count').style.display = n ? '' : 'none';
+      renderRequests();
+    } catch (e) { $('req-list').innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+  }
+
+  function renderRequests() {
+    const st = $('f-status').value, q = $('f-search').value.trim().toLowerCase();
+    const rows = REQUESTS.filter(r =>
+      (st === 'all' || (st === 'active' ? !CLOSED.includes(r.status) : r.status === st)) &&
+      (!q || [r.id, r.name, r.email, r.phone, r.message, r.service, ...(r.items || []).map(i => i.name)].join(' ').toLowerCase().includes(q)));
+    if (!rows.length) { $('req-list').innerHTML = `<div class="card"><p class="muted">${REQUESTS.length ? 'Nothing matches this filter.' : 'No requests yet. New quote requests and shop orders will show up here.'}</p></div>`; return; }
+    $('req-list').innerHTML = rows.map(r => {
+      const what = r.items && r.items.length ? r.items.map(i => `${i.name} ×${i.qty}`).join(', ') : (r.service || '') + (r.message ? ' — ' + r.message : '');
+      return `<div class="req-row" onclick="openRequest('${esc(r.id)}')">
+        <div style="min-width:0;">
+          <div class="title">${esc(r.name)} <span class="muted" style="font-weight:600;">· ${esc(r.id)} · ${r.kind === 'order' ? 'Shop order' : 'Quote'}${r.price ? ' · ' + esc(r.price) : ''}</span></div>
+          <div class="sub">${fmtDate(r.created)} · ${esc(what)}</div>
+        </div>
+        <div class="row" onclick="event.stopPropagation()">
+          <select onchange="quickStatus('${esc(r.id)}', this)">${statusOptions(r.status)}</select>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  $('f-status').addEventListener('change', renderRequests);
+  $('f-search').addEventListener('input', renderRequests);
+
+  async function quickStatus(id, sel) {
+    const r = REQUESTS.find(x => x.id === id);
+    const notify = confirm(`Status → ${statusLabel(sel.value)}.\n\nEmail ${r.name} about this update?\n(OK = save and email, Cancel = save without emailing)`);
+    await updateRequest(id, { status: sel.value, notify });
+  }
+
+  async function updateRequest(id, patch) {
+    try {
+      const r = await api('/admin/requests/' + encodeURIComponent(id), { method: 'PATCH', body: patch });
+      const i = REQUESTS.findIndex(x => x.id === id);
+      if (i >= 0) REQUESTS[i] = r;
+      toast(patch.notify ? (r.notified ? 'Saved and emailed the customer.' : 'Saved, but the email failed to send.') : 'Saved.');
+      loadRequests();
+      if ($('req-drawer').classList.contains('open') && $('req-drawer').dataset.id === id) openRequest(id);
+      return r;
+    } catch (e) { toast(e.message); loadRequests(); }
+  }
+
+  function openRequest(id) {
+    const r = REQUESTS.find(x => x.id === id);
+    if (!r) { toast('Request ' + id + ' not found.'); return; }
+    const d = $('req-drawer');
+    d.dataset.id = id;
+    $('d-title').textContent = `${r.id} · ${r.kind === 'order' ? 'Shop order' : 'Quote request'}`;
+    $('d-badge').innerHTML = badge(r.status);
+    $('d-body').innerHTML = `
+      <div class="card">
+        <dl class="kv">
+          <dt>Name</dt><dd>${esc(r.name)}</dd>
+          <dt>Email</dt><dd><a href="mailto:${esc(r.email)}?subject=${encodeURIComponent('Your MangoWorks3D request ' + r.id)}">${esc(r.email)}</a></dd>
+          <dt>Phone</dt><dd>${r.phone ? `<a href="tel:${esc(r.phone)}">${esc(r.phone)}</a>` : '—'}</dd>
+          <dt>Received</dt><dd>${fmtDate(r.created)}</dd>
+          ${r.service ? `<dt>Service</dt><dd>${esc(r.service)}</dd>` : ''}
+          ${r.material ? `<dt>Material</dt><dd>${esc(r.material)}</dd>` : ''}
+          ${r.color ? `<dt>Color</dt><dd>${esc(r.color)}</dd>` : ''}
+        </dl>
+        ${r.items && r.items.length ? `<label style="margin-top:1rem;">Items</label><ul class="items">${r.items.map(i => `<li>${esc(i.name)} — ${esc(i.material)}, ${esc(i.color)} × ${i.qty}</li>`).join('')}</ul>` : ''}
+        ${r.message ? `<label style="margin-top:1rem;">Message</label><div class="pre">${esc(r.message)}</div>` : ''}
+        ${r.files && r.files.length ? `<label style="margin-top:1rem;">Files</label>${r.files.map(f => `<div><a href="/api/files/${encodeURIComponent(r.id)}/${f.n}">📎 ${esc(f.name)}</a> <span class="muted">(${Math.max(1, Math.round(f.size / 1024))} KB)</span></div>`).join('')}` : ''}
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:0.9rem;">
+        <div class="grid2">
+          <div><label>Status</label><select id="d-status">${statusOptions(r.status)}</select></div>
+          <div><label>Price</label><input type="text" id="d-price" value="${esc(r.price)}" placeholder="e.g. $24.50"/></div>
+        </div>
+        <div><label>Message to customer</label><textarea id="d-msg" placeholder="Shown in their account and included in the email">${esc(r.customerMessage)}</textarea></div>
+        <div><label>Private note (only you see this)</label><textarea id="d-note">${esc(r.adminNote)}</textarea></div>
+        <label class="check"><input type="checkbox" id="d-notify"/> Email the customer about this update</label>
+        <div class="row"><button class="btn" onclick="saveRequest()">Save</button><span class="grow"></span><button class="btn-ghost btn-danger" onclick="deleteRequest()">Delete</button></div>
+      </div>
+      <div><label>History</label><div class="history">${(r.history || []).slice().reverse().map(h => `${fmtDate(h.at)} — ${esc(statusLabel(h.status))} <span>(${esc(h.by)})</span>`).join('<br/>')}</div></div>`;
+    $('d-status').addEventListener('change', () => { $('d-notify').checked = $('d-status').value !== r.status; });
+    d.classList.add('open'); $('overlay').classList.add('open');
+    history.replaceState(null, '', '#' + id);
+  }
+
+  async function saveRequest() {
+    const id = $('req-drawer').dataset.id;
+    await updateRequest(id, { status: $('d-status').value, price: $('d-price').value, customerMessage: $('d-msg').value, adminNote: $('d-note').value, notify: $('d-notify').checked });
+  }
+
+  async function deleteRequest() {
+    const id = $('req-drawer').dataset.id;
+    if (!confirm(`Delete ${id} and its files for good? This can't be undone.`)) return;
+    try { await api('/admin/requests/' + encodeURIComponent(id), { method: 'DELETE' }); closeDrawers(); toast('Deleted.'); loadRequests(); }
+    catch (e) { toast(e.message); }
+  }
+
+  function closeDrawers() {
+    document.querySelectorAll('.drawer').forEach(d => d.classList.remove('open'));
+    $('overlay').classList.remove('open');
+    if (/^#MW-/.test(location.hash)) history.replaceState(null, '', location.pathname);
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawers(); });
+
+  // ── Site data ──
+  async function loadSite() {
+    const d = await api('/admin/site');
+    CATALOG = d.catalog; MATERIALS = d.materials;
+    renderProducts(); renderMaterials(); setMatDirty(false);
+    for (const k of ['announcement', 'heroBadge', 'notifyEmail']) $('s-' + k).value = d.settings[k] || '';
+  }
+
+  // ── Products ──
+  const imgUrl = (id) => '/api/img/' + encodeURIComponent(id);
+  function renderProducts() {
+    const items = CATALOG.items;
+    if (!items.length) { $('prod-list').innerHTML = `<div class="card"><p class="muted">No products yet. Click “Add product” to create your first one.</p></div>`; return; }
+    $('prod-list').innerHTML = items.map((p, i) => `
+      <div class="card prod-row">
+        <div class="prod-thumb">${p.images && p.images.length ? `<img src="${imgUrl(p.images[0])}" alt=""/>` : esc(p.emoji || '🖨️')}</div>
+        <div class="grow">
+          <div style="font-weight:900;">${esc(p.name)} ${p.active ? '' : '<span class="pill">Hidden</span>'}</div>
+          <div class="muted" style="font-size:0.82rem;">${p.price ? esc(p.price) + ' · ' : ''}${(p.images || []).length} photo${(p.images || []).length === 1 ? '' : 's'}</div>
+        </div>
+        <button class="icon-btn" title="Move up" onclick="moveProduct(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="icon-btn" title="Move down" onclick="moveProduct(${i},1)" ${i === items.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="btn-ghost" onclick="editProduct(${i})">Edit</button>
+      </div>`).join('');
+  }
+
+  async function saveCatalog(msg) {
+    CATALOG = await api('/admin/catalog', { method: 'PUT', body: CATALOG });
+    renderProducts(); toast(msg || 'Products saved.');
+  }
+
+  async function moveProduct(i, d) {
+    const items = CATALOG.items; [items[i], items[i + d]] = [items[i + d], items[i]];
+    try { await saveCatalog('Order saved.'); } catch (e) { toast(e.message); loadSite(); }
+  }
+
+  let editing = null; // { index, images, removed }
+  function editProduct(i) {
+    const p = i === undefined ? { name: '', price: '', emoji: '', desc: '', active: true, images: [] } : CATALOG.items[i];
+    editing = { index: i, images: [...(p.images || [])], removed: [] };
+    $('p-title').textContent = i === undefined ? 'New product' : 'Edit product';
+    $('p-name').value = p.name; $('p-price').value = p.price || ''; $('p-emoji').value = p.emoji || '';
+    $('p-desc').value = p.desc || ''; $('p-active').checked = p.active !== false;
+    $('p-delete').style.display = i === undefined ? 'none' : '';
+    $('p-upload-status').textContent = '';
+    renderPhotos();
+    $('prod-drawer').classList.add('open'); $('overlay').classList.add('open');
+    setTimeout(() => $('p-name').focus(), 50);
+  }
+
+  function renderPhotos() {
+    $('p-photos').innerHTML = editing.images.map((id, i) => `
+      <div class="photo${i === 0 ? ' main' : ''}">
+        <img src="${imgUrl(id)}" alt=""/>
+        ${i === 0 ? '<span class="tag">MAIN</span>' : ''}
+        <div class="ops">
+          ${i === 0 ? '<span></span>' : `<button onclick="mainPhoto(${i})" title="Make main photo">★ Main</button>`}
+          <button onclick="removePhoto(${i})" title="Remove">✕</button>
+        </div>
+      </div>`).join('') + `<div class="add-photo" onclick="$('p-file').click()">+ Add<br/>photos</div>`;
+  }
+  function mainPhoto(i) { const [x] = editing.images.splice(i, 1); editing.images.unshift(x); renderPhotos(); }
+  function removePhoto(i) { editing.removed.push(...editing.images.splice(i, 1)); renderPhotos(); }
+
+  // Shrink photos in the browser (max 1600 px, JPEG) so uploads are fast and small.
+  function shrinkImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(img.src);
+        c.toBlob(b => b ? resolve(b) : reject(new Error('Could not read that image')), 'image/jpeg', 0.85);
+      };
+      img.onerror = () => reject(new Error(`Couldn't read ${file.name} (try a JPEG or PNG).`));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  $('p-file').addEventListener('change', async (e) => {
+    const files = [...e.target.files]; e.target.value = '';
+    for (let k = 0; k < files.length; k++) {
+      $('p-upload-status').textContent = `Uploading ${k + 1} of ${files.length}…`;
+      try {
+        const blob = files[k].type === 'image/gif' ? files[k] : await shrinkImage(files[k]);
+        const r = await api('/admin/images', { method: 'POST', body: blob, headers: { 'content-type': blob.type || 'image/jpeg' } });
+        editing.images.push(r.id); renderPhotos();
+      } catch (err) { toast(err.message); }
+    }
+    $('p-upload-status').textContent = files.length ? 'Uploaded. Remember to save the product.' : '';
+  });
+
+  async function saveProduct() {
+    const name = $('p-name').value.trim();
+    if (!name) { toast('Give the product a name.'); return; }
+    const data = { name, price: $('p-price').value.trim(), emoji: $('p-emoji').value.trim(), desc: $('p-desc').value.trim(), active: $('p-active').checked, images: editing.images };
+    const prev = JSON.parse(JSON.stringify(CATALOG));
+    if (editing.index === undefined) CATALOG.items.push({ id: Math.random().toString(36).slice(2, 10), ...data });
+    else Object.assign(CATALOG.items[editing.index], data);
+    try {
+      await saveCatalog('Product saved.');
+      editing.removed.forEach(id => api('/admin/images/' + encodeURIComponent(id), { method: 'DELETE' }).catch(() => {}));
+      closeDrawers();
+    } catch (e) { CATALOG = prev; toast(e.message); }
+  }
+
+  async function deleteProduct() {
+    const p = CATALOG.items[editing.index];
+    if (!confirm(`Delete “${p.name}”? Its photos are deleted too.`)) return;
+    const prev = JSON.parse(JSON.stringify(CATALOG));
+    CATALOG.items.splice(editing.index, 1);
+    try {
+      await saveCatalog('Product deleted.');
+      [...(p.images || []), ...editing.images, ...editing.removed].filter((v, i, a) => a.indexOf(v) === i)
+        .forEach(id => api('/admin/images/' + encodeURIComponent(id), { method: 'DELETE' }).catch(() => {}));
+      closeDrawers();
+    } catch (e) { CATALOG = prev; toast(e.message); }
+  }
+
+  // ── Materials ──
+  function setMatDirty(d) { $('mat-dirty').textContent = d ? 'Unsaved changes' : ''; }
+  window.addEventListener('beforeunload', e => { if ($('mat-dirty').textContent) { e.preventDefault(); e.returnValue = ''; } });
+
+  function renderMaterials() {
+    $('mat-list').innerHTML = MATERIALS.items.map((m, i) => `
+      <div class="card mat-card">
+        <div class="row">
+          <input type="text" class="grow" value="${esc(m.name)}" placeholder="Material name" oninput="MATERIALS.items[${i}].name=this.value;setMatDirty(true)" style="font-weight:900;flex:1;width:auto;"/>
+          <button class="icon-btn" title="Move up" onclick="moveMaterial(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button class="icon-btn" title="Move down" onclick="moveMaterial(${i},1)" ${i === MATERIALS.items.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="icon-btn" title="Remove material" onclick="removeMaterial(${i})">✕</button>
+        </div>
+        <div class="colors">
+          ${m.colors.map((c, j) => `
+            <div class="color-row">
+              <input type="color" id="col-${i}-${j}" value="${esc(c.hex)}" oninput="setHex(${i},${j},this.value)"/>
+              <input type="text" class="hex" id="hex-${i}-${j}" value="${esc(c.hex)}" maxlength="7" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){setHex(${i},${j},this.value,true)}"/>
+              <input type="text" value="${esc(c.name)}" placeholder="Color name" oninput="MATERIALS.items[${i}].colors[${j}].name=this.value;setMatDirty(true)"/>
+              <button class="icon-btn" title="Remove color" onclick="MATERIALS.items[${i}].colors.splice(${j},1);renderMaterials();setMatDirty(true)">✕</button>
+            </div>`).join('')}
+          <div><button class="btn-ghost" onclick="MATERIALS.items[${i}].colors.push({name:'',hex:'#FF8C00'});renderMaterials();setMatDirty(true)">+ Add color</button></div>
+        </div>
+      </div>`).join('');
+  }
+  function setHex(i, j, v, fromText) {
+    MATERIALS.items[i].colors[j].hex = v.toUpperCase(); setMatDirty(true);
+    $(fromText ? 'col-' + i + '-' + j : 'hex-' + i + '-' + j).value = fromText ? v.toLowerCase() : v.toUpperCase();
+  }
+  function addMaterial() { MATERIALS.items.push({ name: '', colors: [{ name: 'Black', hex: '#1C1C1C' }, { name: 'White', hex: '#F5F5F0' }] }); renderMaterials(); setMatDirty(true); }
+  function moveMaterial(i, d) { const a = MATERIALS.items; [a[i], a[i + d]] = [a[i + d], a[i]]; renderMaterials(); setMatDirty(true); }
+  function removeMaterial(i) { if (!confirm(`Remove ${MATERIALS.items[i].name || 'this material'}?`)) return; MATERIALS.items.splice(i, 1); renderMaterials(); setMatDirty(true); }
+  async function saveMaterials() {
+    if (MATERIALS.items.some(m => !m.name.trim())) { toast('Every material needs a name.'); return; }
+    if (MATERIALS.items.some(m => m.colors.some(c => !c.name.trim()))) { toast('Every color needs a name.'); return; }
+    try { MATERIALS = await api('/admin/materials', { method: 'PUT', body: MATERIALS }); renderMaterials(); setMatDirty(false); toast('Materials saved — live on the site now.'); }
+    catch (e) { toast(e.message); }
+  }
+
+  // ── Settings ──
+  async function saveSettings() {
+    const body = {};
+    for (const k of ['announcement', 'heroBadge', 'notifyEmail']) body[k] = $('s-' + k).value.trim();
+    try { await api('/admin/settings', { method: 'PUT', body }); toast('Settings saved.'); } catch (e) { toast(e.message); }
+  }
+
+  // ── Customers ──
+  async function loadCustomers() {
+    try {
+      const { items } = await api('/admin/customers');
+      $('cust-body').innerHTML = items.length ? items.map(u => `<tr>
+        <td>${esc(u.name || '—')}</td>
+        <td><a href="mailto:${esc(u.email)}">${esc(u.email)}</a></td>
+        <td class="hide-sm">${esc(u.phone || '—')}</td>
+        <td>${u.requests ? `<a href="#" data-email="${esc(u.email)}" onclick="findCustomer(this.dataset.email);return false;">${u.requests}</a>` : '0'}</td>
+        <td class="hide-sm">${u.account ? 'Yes' : '<span class="muted">No</span>'}</td></tr>`).join('')
+        : '<tr><td colspan="5" class="muted">No customers yet.</td></tr>';
+    } catch (e) { $('cust-body').innerHTML = `<tr><td colspan="5">${esc(e.message)}</td></tr>`; }
+  }
+  function findCustomer(email) { showTab('requests'); $('f-status').value = 'all'; $('f-search').value = email; renderRequests(); }
+
+  boot();
+</script>
 </body>
 </html>
- 

@@ -9,20 +9,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet"/>
-<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-<script>
-  window.addEventListener('load', function() {
-    if (window.netlifyIdentity) {
-      window.netlifyIdentity.on('init', function(user) {
-        if (!user) {
-          window.netlifyIdentity.on('login', function() {
-            document.location.href = '/admin/';
-          });
-        }
-      });
-    }
-  });
-</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -424,6 +410,81 @@
   .step-text h4 { font-weight: 800; font-size: 0.95rem; margin-bottom: 3px; }
   .step-text p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
 
+  /* ── ANNOUNCEMENT / NAV ACCOUNT ── */
+  .announce {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 101;
+    background: var(--mango); color: #000;
+    font-weight: 800; font-size: 0.9rem; text-align: center;
+    padding: 0.5rem 1rem; line-height: 1.4;
+  }
+  nav { top: var(--announce-h, 0px) !important; }
+  .nav-right { display: flex; align-items: center; gap: 1.25rem; }
+  .nav-account {
+    color: var(--text); text-decoration: none; font-weight: 700; font-size: 0.95rem;
+    border: 1px solid rgba(255,255,255,0.18); border-radius: 50px;
+    padding: 0.45rem 1rem; white-space: nowrap; transition: border-color 0.2s, color 0.2s;
+  }
+  .nav-account:hover { border-color: var(--mango); color: var(--mango); }
+  .nav-admin { font-size: 1.2rem; text-decoration: none; }
+
+  /* ── ACCOUNT PAGE ── */
+  .account-wrap { padding: 9rem 2.5rem 5rem; max-width: 860px; margin: 0 auto; min-height: 80vh; }
+  .account-card {
+    background: var(--bg2); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius); padding: 2rem; margin-bottom: 1.5rem;
+  }
+  .account-card h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 1px; margin-bottom: 0.5rem; }
+  .account-card p.muted, .muted { color: var(--text-muted); font-size: 0.92rem; line-height: 1.6; }
+  .signin-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem; }
+  .signin-row input { flex: 1; min-width: 220px; }
+  .code-input { letter-spacing: 6px; font-size: 1.3rem !important; font-weight: 800; text-align: center; max-width: 220px; }
+  .link-btn { background: none; border: none; color: var(--mango); font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.9rem; padding: 0; }
+  .form-error { color: #FF6B6B; font-weight: 700; font-size: 0.9rem; margin-top: 0.75rem; min-height: 1.2em; }
+  .acct-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .acct-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .btn-small {
+    background: var(--bg3); color: var(--text); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50px; padding: 0.5rem 1.1rem; font-weight: 700; font-size: 0.85rem;
+    cursor: pointer; text-decoration: none; font-family: inherit;
+  }
+  .btn-small:hover { border-color: var(--mango); }
+  .req-card {
+    background: var(--bg2); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem;
+  }
+  .req-top { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+  .req-ref { font-weight: 900; letter-spacing: 1px; }
+  .req-date { color: var(--text-muted); font-size: 0.82rem; }
+  .req-body { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; }
+  .req-items { margin: 0.5rem 0 0; padding-left: 1.1rem; color: var(--text); font-size: 0.9rem; line-height: 1.7; }
+  .req-quote {
+    margin-top: 1rem; padding: 1rem 1.25rem; border-radius: 12px;
+    background: rgba(255,140,0,0.08); border: 1px solid rgba(255,140,0,0.25);
+  }
+  .req-quote .price { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--mango); letter-spacing: 1px; }
+  .req-files a { color: var(--teal); font-size: 0.85rem; margin-right: 1rem; }
+  .status-badge {
+    display: inline-block; padding: 0.25rem 0.75rem; border-radius: 50px;
+    font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    background: rgba(255,255,255,0.08); color: var(--text);
+  }
+  .st-new { background: rgba(160,160,160,0.18); color: #DDD; }
+  .st-reviewing { background: rgba(33,150,243,0.18); color: #6CB8FF; }
+  .st-quoted { background: rgba(255,140,0,0.2); color: var(--mango); }
+  .st-approved { background: rgba(0,201,167,0.18); color: var(--teal); }
+  .st-printing { background: rgba(124,58,237,0.22); color: #B08CFF; }
+  .st-ready, .st-shipped { background: rgba(0,201,167,0.18); color: var(--teal); }
+  .st-completed { background: rgba(139,195,74,0.2); color: #A5D86A; }
+  .st-cancelled { background: rgba(230,57,70,0.18); color: #FF6B6B; }
+  .product-price { color: var(--mango); font-weight: 900; font-size: 1rem; margin-bottom: 0.4rem; }
+  .product-thumbs { display: flex; gap: 6px; padding: 0.6rem 1.25rem 0; flex-wrap: wrap; }
+  .product-thumbs img {
+    width: 44px; height: 44px; object-fit: cover; border-radius: 8px; cursor: pointer;
+    border: 2px solid transparent; opacity: 0.75;
+  }
+  .product-thumbs img.active { border-color: var(--mango); opacity: 1; }
+  .hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
   /* ── FOOTER ── */
   footer {
     background: var(--bg2);
@@ -569,6 +630,13 @@
   @media (max-width: 600px) {
     nav { padding: 1rem 1.25rem; }
     .nav-links { display: none; }
+    .account-wrap { padding: 8rem 1.25rem 4rem; }
+    .nav-logo { font-size: 1.45rem !important; letter-spacing: 1px; }
+    .nav-logo-img { height: 36px; width: 36px; }
+    nav > a:first-child { gap: 6px !important; min-width: 0; }
+    .nav-right { gap: 0.6rem; flex-shrink: 0; }
+    .nav-account { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
+    .account-card { padding: 1.5rem; }
     .hero, .section { padding-left: 1.25rem; padding-right: 1.25rem; }
     .form-section { padding-left: 1.25rem; padding-right: 1.25rem; }
     .form-grid { grid-template-columns: 1fr; }
@@ -584,13 +652,18 @@
     <img class="nav-logo-img" src="/images/logo.png" alt="" width="48" height="48"/>
     <span class="nav-logo" style="text-decoration:none;">MANGO<span style="color:var(--text)">WORKS</span>3D</span>
   </a>
-  <ul class="nav-links">
-    <li><a href="#" onclick="showPage('home')">Home</a></li>
-    <li><a href="#" onclick="showPage('shop')">Shop Designs</a></li>
-    <li><a href="#services">Services</a></li>
-    <li><a href="#" onclick="showPage('request')" class="nav-cta">Get a Quote</a></li>
-  </ul>
+  <div class="nav-right">
+    <ul class="nav-links">
+      <li><a href="#" onclick="showPage('home')">Home</a></li>
+      <li><a href="#" onclick="showPage('shop')">Shop Designs</a></li>
+      <li><a href="#services">Services</a></li>
+      <li><a href="#" onclick="showPage('request')" class="nav-cta">Get a Quote</a></li>
+    </ul>
+    <a href="/admin/" class="nav-admin" id="nav-admin" title="Admin" style="display:none">🛠️</a>
+    <a href="/account" class="nav-account" id="nav-account" onclick="showPage('account'); return false;">Sign in</a>
+  </div>
 </nav>
+<div class="announce" id="announce" style="display:none"></div>
 
 <!-- ══════════════ HOME PAGE ══════════════ -->
 <div id="page-home" class="page active">
@@ -600,7 +673,7 @@
     <div class="hero-grid"></div>
     <div class="hero-content">
       <img class="hero-logo" src="/images/logo.png" alt="MangoWorks3D logo" width="120" height="120"/>
-      <div class="hero-eyebrow">Based in New Hampshire</div>
+      <div class="hero-eyebrow" id="hero-badge">Based in New Hampshire</div>
       <h1>
         YOUR IDEAS
         <span class="accent">PRINTED.</span>
@@ -730,6 +803,7 @@
     <div class="form-card" style="flex:1; min-width:300px;">
       <h2 style="font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:1px; margin-bottom:1.75rem;">Your Project Details</h2>
 
+      <div class="hp-field" aria-hidden="true"><label>Website</label><input type="text" id="website" tabindex="-1" autocomplete="off"/></div>
       <div class="form-grid">
         <div>
           <label>Your Name</label>
@@ -756,7 +830,7 @@
           <div class="file-drop" onclick="document.getElementById('fileInput').click()">
             <div class="drop-icon">📎</div>
             <p><span>Click to upload</span> or drag & drop your STL, 3MF, or image file</p>
-            <p style="font-size:0.78rem; margin-top:6px;">Max 50MB · STL, 3MF, OBJ, PNG, JPG</p>
+            <p style="font-size:0.78rem; margin-top:6px;">Max 5 MB · STL, 3MF, OBJ, PNG, JPG · Bigger file? Paste a share link in the description.</p>
             <input type="file" id="fileInput" style="display:none" accept=".stl,.3mf,.obj,.png,.jpg,.jpeg"/>
           </div>
           <p id="file-chosen" style="font-size:0.85rem; color:var(--teal); margin-top:6px; display:none;"></p>
@@ -804,7 +878,7 @@
           You'll hear back within 24–48 hours.
         </p>
         <div class="success-msg" id="success-msg">
-          ✅ &nbsp;Request sent! We'll be in touch soon.
+          <span>✅ &nbsp;Request sent! <span id="success-ref"></span> We'll be in touch soon. <a href="/account" onclick="showPage('account'); return false;" style="color:var(--mango);">Track it in your account →</a></span>
         </div>
       </div>
     </div>
@@ -866,8 +940,62 @@
   </footer>
 </div>
 
+<!-- ══════════════ ACCOUNT PAGE ══════════════ -->
+<div id="page-account" class="page">
+  <div class="account-wrap">
+    <div class="section-label">Your Account</div>
+    <div id="account-signedout">
+      <div class="account-card">
+        <h2>Sign in</h2>
+        <p class="muted">Track your quotes and orders. Enter your email and we'll send you a 6-digit code — no password needed. Use the same email you used on your request.</p>
+        <div id="signin-step-email">
+          <div class="signin-row">
+            <input type="email" id="signin-email" placeholder="you@example.com" autocomplete="email"/>
+            <button class="btn-primary" id="signin-send" onclick="sendCode()">Email me a code →</button>
+          </div>
+        </div>
+        <div id="signin-step-code" style="display:none">
+          <p class="muted" style="margin-top:1rem;">We sent a code to <strong id="signin-sent-to" style="color:var(--text)"></strong>. It expires in 10 minutes.</p>
+          <div class="signin-row">
+            <input type="text" id="signin-code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"/>
+            <button class="btn-primary" id="signin-verify" onclick="verifyCode()">Sign in →</button>
+          </div>
+          <p style="margin-top:0.75rem;"><button class="link-btn" onclick="resetSignin()">Use a different email</button> · <button class="link-btn" onclick="sendCode(true)">Send a new code</button></p>
+        </div>
+        <div class="form-error" id="signin-error"></div>
+      </div>
+    </div>
+    <div id="account-signedin" style="display:none">
+      <div class="account-card">
+        <div class="acct-head">
+          <div>
+            <h2 id="acct-hello">Hi!</h2>
+            <p class="muted" id="acct-email"></p>
+          </div>
+          <div class="acct-actions">
+            <a href="/admin/" class="btn-small" id="acct-admin" style="display:none">🛠️ Admin</a>
+            <button class="btn-small" onclick="showPage('request')">New request</button>
+            <button class="btn-small" onclick="signOut()">Sign out</button>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:1.25rem;">
+          <div><label>Name</label><input type="text" id="acct-name" autocomplete="name"/></div>
+          <div><label>Phone</label><input type="tel" id="acct-phone" autocomplete="tel"/></div>
+        </div>
+        <p style="margin-top:0.75rem;"><button class="link-btn" onclick="saveProfile()">Save details</button> <span class="muted" id="acct-saved"></span></p>
+      </div>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:1px;margin:2rem 0 1rem;">Your Quotes &amp; Orders</h2>
+      <div id="my-requests"><p class="muted">Loading…</p></div>
+    </div>
+  </div>
+  <footer>
+    <div class="footer-logo">MANGOWORKS3D</div>
+    <p>© 2026 MangoWorks3D · <a href="mailto:mangoworks3D@gmail.com">mangoworks3D@gmail.com</a></p>
+  </footer>
+</div>
+
 <script>
-  // Data is loaded from _data/ files managed via the CMS admin panel
+  // Site data (materials, products, settings) comes from /api/site, edited in /admin.
   let MATERIALS = [];
   let COLORS = [];
   let CATALOG = [];
@@ -875,10 +1003,39 @@
 
   let MATERIALS_DATA = []; // full objects with colors
 
+  let SETTINGS = {};
+  let STATUSES = [];
+  let ME = { signedIn: false };
+  let meLoaded = false;
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const imgUrl = (id) => '/api/img/' + encodeURIComponent(id);
+  const productImages = (p) => (p.images && p.images.length) ? p.images.map(imgUrl) : (p.image ? [p.image] : []);
+
+  async function api(path, opts = {}) {
+    const headers = { ...(opts.headers || {}) };
+    if (opts.body && !(opts.body instanceof FormData) && typeof opts.body !== 'string') {
+      headers['content-type'] = 'application/json';
+      opts = { ...opts, body: JSON.stringify(opts.body) };
+    }
+    const res = await fetch('/api' + path, { ...opts, headers, credentials: 'same-origin' });
+    let data = {};
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) { const e = new Error(data.error || 'Something went wrong.'); e.status = res.status; throw e; }
+    return data;
+  }
+
+  let siteLoaded = null;
   async function loadData() {
+    if (!siteLoaded) siteLoaded = fetchSite();
+    await siteLoaded;
+  }
+
+  async function fetchSite() {
+    let site = null;
+    try { site = await api('/site'); } catch (e) {}
     try {
-      const mRes = await fetch('/_data/materials.json');
-      const mData = await mRes.json();
+      const mData = site ? site.materials : await (await fetch('/_data/materials.json')).json();
       MATERIALS_DATA = mData.items;
       MATERIALS = mData.items.map(i => i.name);
       // Default colors to all unique colors across all materials
@@ -902,19 +1059,32 @@
     const statEl = document.getElementById('stat-materials');
     if (statEl) statEl.textContent = MATERIALS.length;
     const popList = document.getElementById('mat-pop-list');
-    if (popList) popList.innerHTML = MATERIALS.map(m => `<li>${m}</li>`).join('');
+    if (popList) popList.innerHTML = MATERIALS.map(m => `<li>${esc(m)}</li>`).join('');
 
-    // Load catalog from _data/catalog/ folder (each design is a separate JSON file)
-    try {
-      const res = await fetch('/_data/catalog/index.json');
-      if (res.ok) { CATALOG = await res.json(); }
-    } catch(e) {
-      // Try loading individual files listed in GitHub
-      CATALOG = [];
-    }
+    CATALOG = site ? site.catalog.items : [];
+    SETTINGS = site ? site.settings : {};
+    STATUSES = site ? site.statuses : [];
+    applySettings();
 
     // Populate home gallery
     buildHomeGallery();
+  }
+
+  function applySettings() {
+    const bar = document.getElementById('announce');
+    if (SETTINGS.announcement) {
+      bar.textContent = SETTINGS.announcement;
+      bar.style.display = 'block';
+      document.documentElement.style.setProperty('--announce-h', bar.offsetHeight + 'px');
+    } else {
+      bar.style.display = 'none';
+      document.documentElement.style.setProperty('--announce-h', '0px');
+    }
+    const badge = document.getElementById('hero-badge');
+    if (SETTINGS.heroBadge !== undefined) {
+      badge.textContent = SETTINGS.heroBadge;
+      badge.style.display = SETTINGS.heroBadge ? '' : 'none';
+    }
   }
 
   function buildHomeGallery() {
@@ -927,12 +1097,13 @@
     }
     grid.innerHTML = active.map((p, i) => {
       const isWide = i === 0 || i === active.length - 1;
-      const thumb = p.image
-        ? `<img src="${p.image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;"/>`
-        : `<span style="font-size:3rem">${p.emoji || '🖨️'}</span>`;
+      const img = productImages(p)[0];
+      const thumb = img
+        ? `<img src="${esc(img)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:cover;"/>`
+        : `<span style="font-size:3rem">${esc(p.emoji || '🖨️')}</span>`;
       return `<div class="gallery-item${isWide ? ' span2' : ''}" onclick="showPage('shop')">
         ${thumb}
-        <div class="gallery-label">${p.name}</div>
+        <div class="gallery-label">${esc(p.name)}</div>
       </div>`;
     }).join('');
   }
@@ -948,7 +1119,7 @@
     const colors = matVal ? getColorsForMaterial(matVal) : COLORS;
     const prev = colSel.value;
     colSel.innerHTML = '<option value="" disabled selected>Choose color…</option>' +
-      colors.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      colors.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
     // restore previous selection if still valid
     if (colors.find(c => c.name === prev)) colSel.value = prev;
   }
@@ -962,28 +1133,35 @@
       const card = document.createElement('div');
       card.className = 'product-card';
 
-      const thumbContent = product.image
-        ? `<img src="${product.image}" alt="${product.name}"/>`
-        : `<span>${product.emoji}</span>`;
+      const pid = esc(product.id);
+      const imgs = productImages(product);
+      const thumbContent = imgs.length
+        ? `<img src="${esc(imgs[0])}" alt="${esc(product.name)}" id="pimg-${pid}"/>`
+        : `<span>${esc(product.emoji || '🖨️')}</span>`;
+      const thumbs = imgs.length > 1
+        ? `<div class="product-thumbs">${imgs.map((u, i) => `<img src="${esc(u)}" alt="" class="${i === 0 ? 'active' : ''}" onclick="showProductImage(this, '${pid}')"/>`).join('')}</div>`
+        : '';
 
-      const materialOptions = MATERIALS.map(m => `<option>${m}</option>`).join('');
+      const materialOptions = MATERIALS.map(m => `<option>${esc(m)}</option>`).join('');
 
       card.innerHTML = `
         <div class="product-thumb">${thumbContent}</div>
+        ${thumbs}
         <div class="product-info">
-          <div class="product-name">${product.name}</div>
-          <div class="product-desc">${product.desc}</div>
+          <div class="product-name">${esc(product.name)}</div>
+          ${product.price ? `<div class="product-price">${esc(product.price)}</div>` : ''}
+          <div class="product-desc">${esc(product.desc)}</div>
           <div class="product-options">
-            <select id="mat-${product.id}" onchange="updateColorSelect('mat-${product.id}','col-${product.id}')"><option value="" disabled selected>Choose material…</option>${materialOptions}</select>
-            <select id="col-${product.id}"><option value="" disabled selected>Choose color…</option></select>
+            <select id="mat-${pid}" onchange="updateColorSelect('mat-${pid}','col-${pid}')"><option value="" disabled selected>Choose material…</option>${materialOptions}</select>
+            <select id="col-${pid}"><option value="" disabled selected>Choose color…</option></select>
             <div class="qty-row">
-              <button class="qty-btn" onclick="changeQty(${product.id},-1)">−</button>
-              <span class="qty-num" id="qty-${product.id}">1</span>
-              <button class="qty-btn" onclick="changeQty(${product.id},1)">+</button>
+              <button class="qty-btn" onclick="changeQty('${pid}',-1)">−</button>
+              <span class="qty-num" id="qty-${pid}">1</span>
+              <button class="qty-btn" onclick="changeQty('${pid}',1)">+</button>
               <span style="font-size:0.8rem;color:var(--text-muted);margin-left:4px;">qty</span>
             </div>
           </div>
-          <button class="add-to-cart" onclick="addToCart(${product.id})">Add to Order</button>
+          <button class="add-to-cart" onclick="addToCart('${pid}')">Add to Order</button>
         </div>`;
       grid.appendChild(card);
     });
@@ -991,8 +1169,7 @@
     // Upload your own file card
     const uploadCard = document.createElement('div');
     uploadCard.className = 'upload-card';
-    const materialOptions = MATERIALS.map(m => `<option>${m}</option>`).join('');
-    const colorOptions = COLORS.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    const materialOptions = MATERIALS.map(m => `<option>${esc(m)}</option>`).join('');
     uploadCard.innerHTML = `
       <h3>📁 Upload Your Own File</h3>
       <p>Have your own STL or 3MF? Upload it here, pick your options, and add it to your order.</p>
@@ -1036,7 +1213,7 @@
     const grid = document.getElementById('materials');
     if (!grid) return;
     grid.innerHTML = MATERIALS.map(m =>
-      `<div class="material-chip" onclick="selectMaterial(this)">${m}</div>`
+      `<div class="material-chip" onclick="selectMaterial(this)">${esc(m)}</div>`
     ).join('') + `<div class="material-chip" onclick="selectMaterial(this)">Not sure</div>`;
   }
 
@@ -1045,7 +1222,7 @@
     if (!container) return;
     const list = colors || COLORS;
     container.innerHTML = list.map(c =>
-      `<div class="swatch" style="background:${c.hex}" onclick="selectColor(this)" title="${c.name}"></div>`
+      `<div class="swatch" style="background:${esc(c.hex)}" onclick="selectColor(this)" title="${esc(c.name)}"></div>`
     ).join('');
   }
 
@@ -1065,14 +1242,19 @@
     document.getElementById('qty-' + id).textContent = qtys[id];
   }
 
+  function showProductImage(el, pid) {
+    document.getElementById('pimg-' + pid).src = el.src;
+    el.parentElement.querySelectorAll('img').forEach(i => i.classList.toggle('active', i === el));
+  }
+
   function addToCart(id) {
-    const product = CATALOG.find(p => p.id === id);
+    const product = CATALOG.find(p => String(p.id) === String(id));
     const mat = document.getElementById('mat-' + id).value;
     const col = document.getElementById('col-' + id).value;
     const qty = qtys[id] || 1;
     if (!mat) { alert('Please choose a material.'); return; }
     if (!col) { alert('Please choose a color.'); return; }
-    cart.push({ type: 'design', name: product.name, emoji: product.emoji, image: product.image, material: mat, color: col, qty });
+    cart.push({ type: 'design', productId: product.id, name: product.name, emoji: product.emoji || '🖨️', image: productImages(product)[0] || '', material: mat, color: col, qty });
     updateCart();
     toggleCart();
   }
@@ -1085,7 +1267,7 @@
     if (!fileInput.files[0]) { alert('Please upload a file first.'); return; }
     if (!mat) { alert('Please choose a material.'); return; }
     if (!col) { alert('Please choose a color.'); return; }
-    cart.push({ type: 'upload', name: fileInput.files[0].name, emoji: '📁', image: '', material: mat, color: col, qty });
+    cart.push({ type: 'upload', name: fileInput.files[0].name, file: fileInput.files[0], emoji: '📁', image: '', material: mat, color: col, qty });
     updateCart();
     toggleCart();
   }
@@ -1106,10 +1288,10 @@
 
     itemsEl.innerHTML = cart.map((item, i) => `
       <div class="cart-item">
-        <div class="cart-item-thumb">${item.image ? `<img src="${item.image}"/>` : item.emoji}</div>
+        <div class="cart-item-thumb">${item.image ? `<img src="${esc(item.image)}"/>` : esc(item.emoji)}</div>
         <div class="cart-item-info">
-          <div class="cart-item-name">${item.name}</div>
-          <div class="cart-item-meta">${item.material} · ${item.color} · Qty: ${item.qty}</div>
+          <div class="cart-item-name">${esc(item.name)}</div>
+          <div class="cart-item-meta">${esc(item.material)} · ${esc(item.color)} · Qty: ${item.qty}</div>
         </div>
         <button class="cart-item-remove" onclick="removeFromCart(${i})">✕</button>
       </div>
@@ -1140,16 +1322,163 @@
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
     window.scrollTo({top: 0, behavior: 'smooth'});
+    const path = name === 'account' ? '/account' : '/';
+    if (location.pathname !== path) history.pushState({ page: name }, '', path);
     if (name === 'shop') { loadData().then(() => buildShop()); }
+    if (name === 'account') renderAccount();
   }
+  window.addEventListener('popstate', () => {
+    showPage(location.pathname.startsWith('/account') ? 'account' : 'home');
+  });
 
-  // Load CMS data then build shop
   window.addEventListener('DOMContentLoaded', async () => {
+    if (location.pathname.startsWith('/account')) showPage('account');
+    loadMe();
     await loadData();
     buildShop();
     populateMaterialChips();
     populateColorSwatches();
   });
+
+  // ── Accounts ──
+  async function loadMe() {
+    try { ME = await api('/auth/me'); } catch (e) { ME = { signedIn: false }; }
+    meLoaded = true;
+    updateAccountUI();
+    return ME;
+  }
+
+  function updateAccountUI() {
+    document.getElementById('nav-account').textContent = ME.signedIn ? 'My Orders' : 'Sign in';
+    document.getElementById('nav-admin').style.display = ME.admin ? '' : 'none';
+    // Prefill the quote form for signed-in customers.
+    if (ME.signedIn) {
+      const n = document.getElementById('name'), e = document.getElementById('email'), ph = document.getElementById('phone');
+      if (!n.value) n.value = ME.name || '';
+      if (!ph.value) ph.value = ME.phone || '';
+      e.value = ME.email; e.readOnly = true; e.title = 'Signed in as ' + ME.email;
+    } else {
+      const e = document.getElementById('email'); e.readOnly = false; e.title = '';
+    }
+    if (document.getElementById('page-account').classList.contains('active')) renderAccount();
+  }
+
+  function setSigninError(msg) { document.getElementById('signin-error').textContent = msg || ''; }
+
+  async function sendCode(resend) {
+    const email = document.getElementById('signin-email').value.trim();
+    if (!email) { setSigninError('Enter your email address.'); return; }
+    const btn = document.getElementById('signin-send');
+    btn.disabled = true; setSigninError('');
+    try {
+      const r = await api('/auth/start', { method: 'POST', body: { email } });
+      document.getElementById('signin-sent-to').textContent = email;
+      document.getElementById('signin-step-email').style.display = 'none';
+      document.getElementById('signin-step-code').style.display = '';
+      const codeEl = document.getElementById('signin-code');
+      codeEl.value = r.devCode || '';
+      codeEl.focus();
+      if (resend) setSigninError('New code sent.');
+    } catch (e) { setSigninError(e.message); }
+    btn.disabled = false;
+  }
+
+  async function verifyCode() {
+    const email = document.getElementById('signin-email').value.trim();
+    const code = document.getElementById('signin-code').value.trim();
+    const btn = document.getElementById('signin-verify');
+    btn.disabled = true; setSigninError('');
+    try {
+      ME = await api('/auth/verify', { method: 'POST', body: { email, code } });
+      resetSignin();
+      updateAccountUI();
+      renderAccount();
+    } catch (e) { setSigninError(e.message); }
+    btn.disabled = false;
+  }
+
+  function resetSignin() {
+    document.getElementById('signin-step-email').style.display = '';
+    document.getElementById('signin-step-code').style.display = 'none';
+    document.getElementById('signin-code').value = '';
+    setSigninError('');
+  }
+
+  document.getElementById('signin-email').addEventListener('keydown', e => { if (e.key === 'Enter') sendCode(); });
+  document.getElementById('signin-code').addEventListener('keydown', e => { if (e.key === 'Enter') verifyCode(); });
+
+  async function signOut() {
+    try { await api('/auth/logout', { method: 'POST' }); } catch (e) {}
+    ME = { signedIn: false };
+    document.getElementById('name').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('phone').value = '';
+    updateAccountUI();
+    renderAccount();
+  }
+
+  async function saveProfile() {
+    const saved = document.getElementById('acct-saved');
+    try {
+      await api('/me', { method: 'PATCH', body: { name: document.getElementById('acct-name').value, phone: document.getElementById('acct-phone').value } });
+      ME.name = document.getElementById('acct-name').value.trim();
+      ME.phone = document.getElementById('acct-phone').value.trim();
+      document.getElementById('acct-hello').textContent = 'Hi' + (ME.name ? ', ' + ME.name.split(' ')[0] : '') + '!';
+      saved.textContent = 'Saved.';
+    } catch (e) { saved.textContent = e.message; }
+    setTimeout(() => { saved.textContent = ''; }, 2500);
+  }
+
+  const statusLabel = (id) => (STATUSES.find(s => s.id === id) || {}).label || id;
+  const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+  async function renderAccount() {
+    const out = document.getElementById('account-signedout');
+    const inn = document.getElementById('account-signedin');
+    if (!meLoaded) { out.style.display = inn.style.display = 'none'; return; }
+    out.style.display = ME.signedIn ? 'none' : '';
+    inn.style.display = ME.signedIn ? '' : 'none';
+    if (!ME.signedIn) return;
+    document.getElementById('acct-hello').textContent = 'Hi' + (ME.name ? ', ' + ME.name.split(' ')[0] : '') + '!';
+    document.getElementById('acct-email').textContent = 'Signed in as ' + ME.email;
+    document.getElementById('acct-name').value = ME.name || '';
+    document.getElementById('acct-phone').value = ME.phone || '';
+    document.getElementById('acct-admin').style.display = ME.admin ? '' : 'none';
+    const list = document.getElementById('my-requests');
+    try {
+      await loadData();
+      const { items } = await api('/my/requests');
+      if (!items.length) {
+        list.innerHTML = `<div class="account-card"><p class="muted">No quotes or orders yet. <button class="link-btn" onclick="showPage('request')">Start one →</button></p></div>`;
+        return;
+      }
+      list.innerHTML = items.map(r => `
+        <div class="req-card">
+          <div class="req-top">
+            <div><span class="req-ref">${esc(r.id)}</span> · <span class="req-date">${r.kind === 'order' ? 'Shop order' : 'Quote request'} · ${fmtDate(r.created)}</span></div>
+            <span class="status-badge st-${esc(r.status)}">${esc(statusLabel(r.status))}</span>
+          </div>
+          ${r.items && r.items.length ? `<ul class="req-items">${r.items.map(i => `<li>${esc(i.name)} — ${esc(i.material)}, ${esc(i.color)} × ${i.qty}</li>`).join('')}</ul>` : ''}
+          ${r.message ? `<div class="req-body" style="margin-top:0.5rem;">${esc(r.message)}</div>` : ''}
+          ${r.files && r.files.length ? `<div class="req-files" style="margin-top:0.5rem;">${r.files.map(f => `<a href="/api/files/${encodeURIComponent(r.id)}/${f.n}">📎 ${esc(f.name)}</a>`).join('')}</div>` : ''}
+          ${(r.price || r.customerMessage) ? `<div class="req-quote">
+            ${r.price ? `<div class="price">${esc(r.price)}</div>` : ''}
+            ${r.customerMessage ? `<div class="req-body" style="color:var(--text);">${esc(r.customerMessage)}</div>` : ''}
+            ${r.status === 'quoted' ? `<button class="btn-primary" style="margin-top:0.9rem;" onclick="approveQuote('${esc(r.id)}', this)">Approve quote →</button>` : ''}
+          </div>` : ''}
+        </div>`).join('');
+    } catch (e) {
+      if (e.status === 401) { ME = { signedIn: false }; updateAccountUI(); return; }
+      list.innerHTML = `<p class="muted">${esc(e.message)}</p>`;
+    }
+  }
+
+  async function approveQuote(id, btn) {
+    if (!confirm('Approve this quote so we can start printing?')) return;
+    btn.disabled = true;
+    try { await api('/my/requests/' + encodeURIComponent(id) + '/approve', { method: 'POST' }); renderAccount(); }
+    catch (e) { alert(e.message); btn.disabled = false; }
+  }
 
   function selectMaterial(el) {
     document.querySelectorAll('.material-chip').forEach(c => c.classList.remove('active'));
@@ -1193,8 +1522,48 @@
     }
 
     const btn = document.querySelector('.form-submit .btn-primary');
+    const fileInput = document.getElementById('fileInput');
+    const files = [fileInput.files[0], ...cart.filter(i => i.file).map(i => i.file)].filter(Boolean);
+    const totalSize = files.reduce((s, f) => s + f.size, 0);
+    if (totalSize > 5 * 1024 * 1024) {
+      alert('Your files add up to more than 5 MB. Please paste a share link (Google Drive, Dropbox…) in the description, or email the files to mangoworks3D@gmail.com, and remove them here.');
+      return;
+    }
     btn.textContent = 'Sending…';
     btn.disabled = true;
+
+    const items = cart.map(i => ({ name: i.name, material: i.material, color: i.color, qty: i.qty, productId: i.productId || '' }));
+    const apiData = new FormData();
+    apiData.append('name', name);
+    apiData.append('email', email);
+    apiData.append('phone', phone);
+    apiData.append('service', service);
+    apiData.append('material', activeMaterial ? activeMaterial.textContent : '');
+    apiData.append('color', colorText);
+    apiData.append('message', description);
+    apiData.append('items', JSON.stringify(items));
+    apiData.append('website', document.getElementById('website').value);
+    files.forEach(f => apiData.append('attachment', f));
+
+    try {
+      const r = await api('/requests', { method: 'POST', body: apiData });
+      document.getElementById('success-ref').textContent = 'Your reference is ' + r.id + '.';
+      const msg = document.getElementById('success-msg');
+      msg.style.display = 'flex';
+      msg.scrollIntoView({behavior:'smooth', block:'nearest'});
+      btn.textContent = 'Sent!';
+      cart = [];
+      updateCart();
+      return;
+    } catch (err) {
+      if (err.status && err.status < 500) {
+        btn.textContent = 'Send My Request →';
+        btn.disabled = false;
+        alert(err.message);
+        return;
+      }
+      // Our API is down: fall back to the old email form below.
+    }
 
     const formData = new FormData();
     formData.append('name', name);
@@ -1205,7 +1574,6 @@
     formData.append('color', colorText || 'Not specified');
     formData.append('message', description);
 
-    const fileInput = document.getElementById('fileInput');
     if (fileInput.files[0]) {
       formData.append('attachment', fileInput.files[0]);
     }
@@ -1219,6 +1587,7 @@
 
       if (response.ok) {
         const msg = document.getElementById('success-msg');
+        document.getElementById('success-ref').textContent = '';
         msg.style.display = 'flex';
         msg.scrollIntoView({behavior:'smooth', block:'nearest'});
         btn.textContent = 'Sent!';
