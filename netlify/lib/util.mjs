@@ -73,7 +73,7 @@ export const STATUSES = [
   { id: "quoted", label: "Quote sent" },
   { id: "approved", label: "Approved" },
   { id: "printing", label: "Printing" },
-  { id: "ready", label: "Ready for pickup" },
+  { id: "ready", label: "Ready to ship" },
   { id: "shipped", label: "Shipped" },
   { id: "completed", label: "Completed" },
   { id: "cancelled", label: "Cancelled" },

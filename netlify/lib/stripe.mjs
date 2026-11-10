@@ -41,19 +41,20 @@ async function stripe(method, path, body) {
   return data;
 }
 
-export async function createCheckout(r, amount, site) {
+// q = { subtotal, shipping } in cents. successUrl may contain {CHECKOUT_SESSION_ID}.
+export async function createCheckout(r, q, successUrl, cancelUrl) {
+  const line = (name, amount) => ({ quantity: 1, price_data: { currency: "usd", unit_amount: amount, product_data: { name } } });
+  const lineItems = { 0: line(`MangoWorks3D order ${r.id}`, q.subtotal) };
+  if (q.shipping > 0) lineItems[1] = line("Shipping", q.shipping);
   return stripe("POST", "/checkout/sessions", {
     mode: "payment",
     customer_email: r.email,
     client_reference_id: r.id,
     metadata: { requestId: r.id },
     payment_intent_data: { metadata: { requestId: r.id }, description: `MangoWorks3D ${r.id}` },
-    line_items: { 0: {
-      quantity: 1,
-      price_data: { currency: "usd", unit_amount: amount, product_data: { name: `MangoWorks3D order ${r.id}` } },
-    } },
-    success_url: `${site}/account?paid=${encodeURIComponent(r.id)}&session={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${site}/account`,
+    line_items: lineItems,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
   });
 }
 

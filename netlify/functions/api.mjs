@@ -7,6 +7,7 @@ import { startLogin, verifyLogin, currentUser, sessionCookie, clearCookie, logou
 import { trySendMail } from "../lib/mail.mjs";
 import { startUpload, putChunk, attachUploads, getChunk, deleteUpload } from "../lib/uploads.mjs";
 import { paymentsEnabled, parseAmountCents, fmtCents, createCheckout, getCheckout, verifyWebhook } from "../lib/stripe.mjs";
+import { sanitizeQuote, quoteOf, parseAddress, addressLines, ensureViewToken, parseMoneyCents } from "../lib/quote.mjs";
 import {
   getMaterials, getCatalog, getSettings, sanitizeMaterials, sanitizeCatalog, sanitizeSettings,
 } from "../lib/site.mjs";
@@ -86,6 +87,7 @@ function requestSummary(r) {
   ];
   if (r.items?.length) lines.push("", "Items:", ...r.items.map((i) => `  • ${i.name} — ${i.material}, ${i.color}, qty ${i.qty}`));
   if (r.files?.length) lines.push("", "Files:", ...r.files.map((f) => `  • ${f.name} (${Math.round(f.size / 1024)} KB)`));
+  if (r.shipTo) lines.push("", "Ship to:", ...addressLines(r.shipTo).map((l) => `  ${l}`));
   lines.push("", r.message || "");
   return lines.join("\n");
 }
@@ -124,14 +126,14 @@ route("POST", "/auth/verify", async ({ req, url }) => {
   const { email, code } = await readJson(req);
   const { token, user } = await verifyLogin(email, code);
   // First sign-in after ordering as a guest: take name/phone from their latest request.
-  if (!user.name || !user.phone) {
+  if (!user.name || !user.phone || !user.address) {
     const [latest] = await listRequests(user.email);
     if (latest) {
-      user.name ||= latest.name; user.phone ||= latest.phone;
+      user.name ||= latest.name; user.phone ||= latest.phone; user.address ||= latest.shipTo || null;
       await stores.users().setJSON(user.email, user);
     }
   }
-  const me = { signedIn: true, email: user.email, name: user.name || "", phone: user.phone || "", admin: isAdminEmail(user.email) };
+  const me = { signedIn: true, email: user.email, name: user.name || "", phone: user.phone || "", address: user.address || null, admin: isAdminEmail(user.email) };
   return json(me, 200, { "set-cookie": sessionCookie(token, url.protocol === "https:") });
 });
 
@@ -143,7 +145,7 @@ route("POST", "/auth/logout", async ({ req }) => {
 route("GET", "/auth/me", async ({ req }) => {
   const u = await currentUser(req);
   if (!u) return json({ signedIn: false });
-  return json({ signedIn: true, email: u.email, name: u.user.name || "", phone: u.user.phone || "", admin: u.admin });
+  return json({ signedIn: true, email: u.email, name: u.user.name || "", phone: u.user.phone || "", address: u.user.address || null, admin: u.admin });
 });
 
 route("PATCH", "/me", async ({ req }) => {
@@ -175,6 +177,7 @@ route("POST", "/requests", async ({ req, url }) => {
   })).filter((i) => i.name);
   if (!message && !items.length) throw new HttpError(400, "Please describe your project.");
 
+  const shipTo = parseAddress(form);
   const id = refId();
   const files = [];
   const uploads = form.getAll("attachment").filter((f) => f && typeof f === "object" && f.size > 0);
@@ -196,17 +199,17 @@ route("POST", "/requests", async ({ req, url }) => {
     id, kind: items.length ? "order" : "quote", created: now, updated: now,
     email, name, phone: clean(form.get("phone"), 40),
     service: clean(form.get("service"), 100), material: clean(form.get("material"), 60), color: clean(form.get("color"), 100),
-    message, items, files,
+    message, items, files, shipTo,
     status: "new", price: "", customerMessage: "", adminNote: "",
     history: [{ at: now, status: "new", by: "customer" }],
   };
   await saveRequest(record);
   await stores.requests().set(`by-email/${email}/${id}`, "");
 
-  // Remember the name/phone on the account so the form prefills next time.
+  // Remember name/phone/address on the account so the form prefills next time.
   const users = stores.users();
   const user = await users.get(email, { type: "json" });
-  if (user && (!user.name || !user.phone)) await users.setJSON(email, { ...user, name: user.name || name, phone: user.phone || record.phone });
+  if (user) await users.setJSON(email, { ...user, name: user.name || name, phone: user.phone || record.phone, address: shipTo });
 
   const settings = await getSettings();
   const site = siteUrl(url);
@@ -231,10 +234,50 @@ route("GET", "/my/requests", async ({ req }) => {
   return json({ items: (await listRequests(u.email)).map(publicRequest) });
 });
 
-route("POST", "/my/requests/([\\w-]+)/approve", async ({ req, url, params: [id] }) => {
-  const u = await requireUser(req);
+// The customer's request: signed in as its owner, or holding the invoice link's token.
+async function customerRequest(req, id, token) {
   const r = await getRequest(id);
-  if (r.email !== u.email) throw new HttpError(404, "Request not found");
+  if (token && r.viewToken && token === r.viewToken) return r;
+  const u = await currentUser(req);
+  if (u && (u.email === r.email || u.admin)) return r;
+  throw new HttpError(404, "Request not found");
+}
+
+const invoiceUrl = (r, site) => `${site}/invoice/?id=${encodeURIComponent(r.id)}&t=${ensureViewToken(r)}`;
+
+// What the invoice page shows (no private notes, files or history).
+async function invoiceView(r) {
+  const q = quoteOf(r, parseAmountCents);
+  return {
+    id: r.id, kind: r.kind, created: r.created, quotedAt: r.quote?.updated || r.updated,
+    name: r.name, email: r.email, phone: r.phone, shipTo: r.shipTo || null,
+    items: r.items || [], quote: q, customerMessage: r.customerMessage,
+    status: r.status, statusLabel: statusLabel(r.status), paid: r.paid || null,
+    payable: Boolean(paymentsEnabled() && q?.total >= 50 && !r.paid && PAYABLE.has(r.status)),
+    canApprove: r.status === "quoted",
+    business: { name: "MangoWorks3D", email: "mangoworks3D@gmail.com" },
+  };
+}
+
+route("GET", "/invoice/([\\w-]+)", async ({ req, url, params: [id] }) => {
+  const r = await customerRequest(req, id, url.searchParams.get("t"));
+  return json(await invoiceView(r));
+});
+
+route("POST", "/invoice/([\\w-]+)/(approve|checkout|confirm)", async ({ req, url, params: [id, action] }) => {
+  const body = await readJson(req);
+  const r = await customerRequest(req, id, body.t);
+  const site = siteUrl(url);
+  if (action === "approve") await approveRequest(r, site);
+  else if (action === "confirm") await confirmCheckout(r, body.session, site);
+  else {
+    const back = invoiceUrl(r, site);
+    return json(await startCheckout(r, `${back}&paid=1&session={CHECKOUT_SESSION_ID}`, back));
+  }
+  return json(await invoiceView(r));
+});
+
+async function approveRequest(r, site) {
   if (r.status !== "quoted") throw new HttpError(409, "This request isn't waiting for your approval.");
   const now = new Date().toISOString();
   r.status = "approved"; r.updated = now;
@@ -244,8 +287,36 @@ route("POST", "/my/requests/([\\w-]+)/approve", async ({ req, url, params: [id] 
   await trySendMail({
     to: settings.notifyEmail, replyTo: r.email,
     subject: `Quote ${r.id} approved by ${r.name}`,
-    text: `${r.name} approved the quote${r.price ? ` (${r.price})` : ""} for ${r.id}.\n\n${siteUrl(url)}/admin/#${r.id}`,
+    text: `${r.name} approved the quote${r.price ? ` (${r.price})` : ""} for ${r.id} and will pay separately.\n\n${site}/admin/#${r.id}`,
   });
+}
+
+async function startCheckout(r, successUrl, cancelUrl) {
+  if (!paymentsEnabled()) throw new HttpError(409, "Online payment isn't available yet. Reply to your quote email to arrange payment.");
+  if (r.paid) throw new HttpError(409, "This order is already paid. Thank you!");
+  if (!PAYABLE.has(r.status)) throw new HttpError(409, "This request isn't ready for payment.");
+  const q = quoteOf(r, parseAmountCents);
+  if (!q || q.total < 50) throw new HttpError(409, "This quote doesn't have a price to pay yet.");
+  const session = await createCheckout(r, q, successUrl, cancelUrl);
+  r.checkout = { sessionId: session.id, amount: q.total, at: new Date().toISOString() };
+  await saveRequest(r);
+  return { url: session.url };
+}
+
+// The customer is back from Stripe: confirm with Stripe before believing it.
+async function confirmCheckout(r, sessionId, site) {
+  if (r.paid || !sessionId || !paymentsEnabled()) return;
+  const s = await getCheckout(String(sessionId));
+  if (s.client_reference_id === r.id && s.payment_status === "paid") {
+    await markPaid(r, { amount: s.amount_total, method: "card", sessionId: s.id, paymentIntent: s.payment_intent || "", by: "customer" }, site);
+  }
+}
+
+route("POST", "/my/requests/([\\w-]+)/approve", async ({ req, url, params: [id] }) => {
+  const u = await requireUser(req);
+  const r = await getRequest(id);
+  if (r.email !== u.email) throw new HttpError(404, "Request not found");
+  await approveRequest(r, siteUrl(url));
   return json(publicRequest(r));
 });
 
@@ -253,16 +324,24 @@ route("POST", "/my/requests/([\\w-]+)/approve", async ({ req, url, params: [id] 
 const PAYABLE = new Set(["quoted", "approved"]);
 
 // Record a payment once (webhook and the customer's return can both report it).
-async function markPaid(r, { amount, method, sessionId = "", paymentIntent = "", by }, site) {
+async function markPaid(r, { amount, method, sessionId = "", paymentIntent = "", by, receipt = false }, site) {
   if (r.paid && (!sessionId || r.paid.sessionId === sessionId)) return r;
   const now = new Date().toISOString();
+  ensureViewToken(r);
   r.paid = { amount, method, at: now, by, sessionId, paymentIntent };
   if (r.status === "quoted") r.status = "approved";
   r.history.push({ at: now, status: r.status, by: `${by} — paid ${fmtCents(amount)} (${method})` });
   r.updated = now;
   await saveRequest(r);
+  const settings = await getSettings();
+  if (method === "card" || receipt) {
+    await trySendMail({
+      to: r.email, replyTo: settings.notifyEmail,
+      subject: `Receipt for ${r.id}: ${fmtCents(amount)} paid`,
+      text: `Hi ${r.name},\n\nThanks! We received your payment of ${fmtCents(amount)} for ${r.id}. We'll keep you posted as it's printed and shipped.\n\nYour receipt: ${invoiceUrl(r, site)}\n\n— MangoWorks3D`,
+    });
+  }
   if (method === "card") {
-    const settings = await getSettings();
     await trySendMail({
       to: settings.notifyEmail, replyTo: r.email,
       subject: `Payment received: ${fmtCents(amount)} for ${r.id} (${r.name})`,
@@ -278,15 +357,8 @@ route("POST", "/my/requests/([\\w-]+)/checkout", async ({ req, url, params: [id]
   const u = await requireUser(req);
   const r = await getRequest(id);
   if (r.email !== u.email) throw new HttpError(404, "Request not found");
-  if (!paymentsEnabled()) throw new HttpError(409, "Online payment isn't available yet. Reply to your quote email to arrange payment.");
-  if (r.paid) throw new HttpError(409, "This order is already paid. Thank you!");
-  if (!PAYABLE.has(r.status)) throw new HttpError(409, "This request isn't ready for payment.");
-  const amount = parseAmountCents(r.price);
-  if (!amount) throw new HttpError(409, "This quote doesn't have a price to pay yet.");
-  const session = await createCheckout(r, amount, siteUrl(url));
-  r.checkout = { sessionId: session.id, amount, at: new Date().toISOString() };
-  await saveRequest(r);
-  return json({ url: session.url });
+  const site = siteUrl(url);
+  return json(await startCheckout(r, `${site}/account?paid=${encodeURIComponent(r.id)}&session={CHECKOUT_SESSION_ID}`, `${site}/account`));
 });
 
 // The customer is back from Stripe: confirm with Stripe before believing it.
@@ -295,12 +367,7 @@ route("POST", "/my/requests/([\\w-]+)/confirm", async ({ req, url, params: [id] 
   const r = await getRequest(id);
   if (r.email !== u.email) throw new HttpError(404, "Request not found");
   const { session: sessionId } = await readJson(req);
-  if (!r.paid && sessionId && paymentsEnabled()) {
-    const s = await getCheckout(String(sessionId));
-    if (s.client_reference_id === r.id && s.payment_status === "paid") {
-      await markPaid(r, { amount: s.amount_total, method: "card", sessionId: s.id, paymentIntent: s.payment_intent || "", by: "customer" }, siteUrl(url));
-    }
-  }
+  await confirmCheckout(r, sessionId, siteUrl(url));
   return json(publicRequest(r));
 });
 
@@ -369,32 +436,50 @@ route("PATCH", "/admin/requests/([\\w-]+)", async ({ req, url, params: [id] }) =
     if (body.status !== r.status) { r.status = body.status; r.history.push({ at: now, status: r.status, by: admin.email }); }
   }
   if (body.price !== undefined) r.price = clean(body.price, 60);
+  if (body.quote !== undefined) {
+    const q = sanitizeQuote(body.quote);
+    r.quote = { ...q, updated: now };
+    r.price = q.lines.length ? fmtCents(q.total) : "";
+    ensureViewToken(r);
+  }
+  if (body.shipTo !== undefined) r.shipTo = parseAddress(body.shipTo, false);
   if (body.customerMessage !== undefined) r.customerMessage = clean(body.customerMessage, 3000);
   if (body.adminNote !== undefined) r.adminNote = clean(body.adminNote, 5000);
   if (body.paid === null && r.paid) {
     r.history.push({ at: now, status: r.status, by: `${admin.email} — marked unpaid` });
     delete r.paid;
   } else if (body.paid && !r.paid) {
-    const amount = parseAmountCents(body.paid.amount ?? r.price);
+    const amount = body.paid.amount !== undefined ? parseMoneyCents(body.paid.amount) : quoteOf(r, parseAmountCents)?.total;
     if (!amount) throw new HttpError(400, "Set a price first, or enter the amount received.");
     const method = clean(body.paid.method, 30) || "other";
-    r.paid = { amount, method, at: now, by: admin.email };
-    r.history.push({ at: now, status: r.status, by: `${admin.email} — paid ${fmtCents(amount)} (${method})` });
+    await markPaid(r, { amount, method, by: admin.email, receipt: Boolean(body.notify) }, siteUrl(url));
   }
   r.updated = now;
   await saveRequest(r);
 
   if (body.notify) {
     const site = siteUrl(url);
-    const lines = [`Hi ${r.name},`, "", `Update on your MangoWorks3D request ${r.id}: ${statusLabel(r.status)}.`];
-    if (r.price) lines.push(`Price: ${r.price}`);
-    if (r.customerMessage) lines.push("", r.customerMessage);
-    if (r.status === "quoted") {
-      lines.push("", paymentsEnabled() && parseAmountCents(r.price)
-        ? `To approve and pay online, sign in at ${site}/account with this email address. Prefer cash or Venmo? Just reply to this email.`
-        : `To approve the quote, sign in at ${site}/account with this email address, or just reply to this email.`);
+    const q = quoteOf(r, parseAmountCents);
+    const lines = [`Hi ${r.name},`, ""];
+    if (r.status === "quoted" && q) {
+      lines.push(`Your quote ${r.id} from MangoWorks3D is ready:`, "");
+      for (const l of q.lines) lines.push(`  ${l.desc}${l.qty > 1 ? ` × ${l.qty}` : ""}  —  ${fmtCents(l.qty * l.unit)}`);
+      lines.push(`  Shipping  —  ${q.shipping ? fmtCents(q.shipping) : "Free"}`, `  Total  —  ${fmtCents(q.total)}`);
+    } else {
+      lines.push(`Update on your MangoWorks3D request ${r.id}: ${statusLabel(r.status)}.`);
     }
-    else lines.push("", `See the details any time at ${site}/account.`);
+    if (r.customerMessage) lines.push("", r.customerMessage);
+    if (r.status === "quoted" && q) {
+      lines.push("", paymentsEnabled() && q.total >= 50
+        ? `View your quote, approve and pay online here:\n${invoiceUrl(r, site)}`
+        : `View and approve your quote here:\n${invoiceUrl(r, site)}`,
+        "", "Prefer to pay another way? Just reply to this email.");
+    } else if (q) {
+      lines.push("", `Your invoice: ${invoiceUrl(r, site)}`);
+    } else {
+      lines.push("", `See the details any time at ${site}/account.`);
+    }
+    await saveRequest(r); // keeps the invoice link token
     lines.push("", "— MangoWorks3D");
     const settings = await getSettings();
     const sent = await trySendMail({ to: r.email, replyTo: settings.notifyEmail, subject: `${r.id}: ${statusLabel(r.status)}`, text: lines.join("\n") });

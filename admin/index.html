@@ -111,6 +111,17 @@
   .pre { white-space: pre-wrap; font-size: 0.9rem; line-height: 1.55; overflow-wrap: anywhere; }
   .items { padding-left: 1.1rem; line-height: 1.7; font-size: 0.92rem; }
   .item-row { display: flex; gap: 0.75rem; align-items: center; padding: 0.4rem 0; }
+  .q-line { display: grid; grid-template-columns: 1fr 64px 92px 76px 32px; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem; }
+  .q-line input { padding: 0.5rem 0.6rem; font-size: 0.88rem; }
+  .q-amt { text-align: right; font-weight: 800; font-size: 0.88rem; }
+  .q-totals { margin-left: auto; width: min(260px, 100%); margin-top: 0.6rem; font-size: 0.92rem; }
+  .q-totals > div { display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0; gap: 0.75rem; }
+  .q-totals .q-money { width: 100px; text-align: right; padding: 0.4rem 0.6rem; }
+  .q-grand { border-top: 1px solid var(--line); margin-top: 0.3rem; padding-top: 0.5rem !important; font-weight: 900; font-size: 1.1rem; color: var(--mango); }
+  @media (max-width: 640px) {
+    .q-line { grid-template-columns: 1fr 56px 84px 32px; }
+    .q-line .q-amt { display: none; }
+  }
   .paid-pill, .unpaid-pill { display: inline-block; font-size: 0.68rem; font-weight: 900; letter-spacing: 1px; padding: 0.15rem 0.55rem; border-radius: 50px; vertical-align: middle; }
   .paid-pill { background: rgba(0,201,167,0.18); color: var(--teal); }
   .unpaid-pill { background: rgba(255,107,107,0.15); color: var(--red); }
@@ -471,6 +482,7 @@
           ${r.service ? `<dt>Service</dt><dd>${esc(r.service)}</dd>` : ''}
           ${r.material ? `<dt>Material</dt><dd>${esc(r.material)}</dd>` : ''}
           ${r.color ? `<dt>Color</dt><dd>${esc(r.color)}</dd>` : ''}
+          <dt>Ship to</dt><dd>${r.shipTo ? addrHtml(r.shipTo) : '<span class="muted">—</span>'}</dd>
         </dl>
         ${r.items && r.items.length ? `<label style="margin-top:1rem;">Items</label>${r.items.map(i => `<div class="item-row">
           <div class="prod-thumb" style="width:48px;height:48px;font-size:1.3rem;">${i.image ? `<img src="${esc(i.image)}" alt=""/>` : '🖨️'}</div>
@@ -481,9 +493,17 @@
         ${r.files && r.files.length ? `<label style="margin-top:1rem;">Files</label>${r.files.map(f => `<div><a href="/api/files/${encodeURIComponent(r.id)}/${f.n}" onclick='downloadFile(${JSON.stringify(r.id)}, ${esc(JSON.stringify(f))}, this); return false;'>📎 ${esc(f.name)}</a> <span class="muted">(${fmtSize(f.size)})</span></div>`).join('')}` : ''}
       </div>
       <div class="card" style="display:flex;flex-direction:column;gap:0.9rem;">
-        <div class="grid2">
-          <div><label>Status</label><select id="d-status">${statusOptions(r.status)}</select></div>
-          <div><label>Price</label><input type="text" id="d-price" value="${esc(r.price)}" placeholder="e.g. $24.50"/></div>
+        <div><label>Status</label><select id="d-status">${statusOptions(r.status)}</select></div>
+        <div>
+          <div class="row" style="margin-bottom:0.35rem;"><label style="margin:0;" class="grow">Quote</label>
+            <a class="btn-ghost" style="padding:0.35rem 0.8rem;font-size:0.8rem;" target="_blank" href="/invoice/?id=${encodeURIComponent(r.id)}${r.viewToken ? '&t=' + encodeURIComponent(r.viewToken) : ''}">Open ${r.paid ? 'invoice' : 'quote'} ↗</a></div>
+          <div id="q-lines"></div>
+          <button class="btn-ghost" style="margin-top:0.5rem;padding:0.4rem 0.9rem;font-size:0.82rem;" onclick="addQuoteLine()">+ Add line</button>
+          <div class="q-totals">
+            <div><span>Subtotal</span><span id="q-sub">$0.00</span></div>
+            <div><span>Shipping</span><span><input type="text" id="q-ship" class="q-money" placeholder="$0.00" oninput="quoteTotals()"/></span></div>
+            <div class="q-grand"><span>Total</span><span id="q-total">$0.00</span></div>
+          </div>
         </div>
         <div><label>Message to customer</label><textarea id="d-msg" placeholder="Shown in their account and included in the email">${esc(r.customerMessage)}</textarea></div>
         <div><label>Private note (only you see this)</label><textarea id="d-note">${esc(r.adminNote)}</textarea></div>
@@ -496,8 +516,65 @@
       </div>
       <div><label>History</label><div class="history">${(r.history || []).slice().reverse().map(h => `${fmtDate(h.at)} — ${esc(statusLabel(h.status))} <span>(${esc(h.by)})</span>`).join('<br/>')}</div></div>`;
     $('d-status').addEventListener('change', () => { $('d-notify').checked = $('d-status').value !== r.status; });
+    QLINES = startingLines(r);
+    $('q-ship').value = r.quote ? centsToInput(r.quote.shipping) : '';
+    renderQuoteLines();
     d.classList.add('open'); $('overlay').classList.add('open');
     history.replaceState(null, '', '#' + id);
+  }
+
+  // ── Quote builder: line items + shipping ──
+  let QLINES = [];
+  const centsToInput = (c) => (c / 100).toFixed(2);
+  function toCents(v) {
+    const s = String(v ?? '').trim().replace(/[$,\s]/g, '');
+    if (!s) return 0;
+    return /^\d+(\.\d{1,2})?$/.test(s) ? Math.round(parseFloat(s) * 100) : null;
+  }
+  const addrHtml = (a) => [a.line1, a.line2, `${a.city}, ${a.state} ${a.zip}`, a.country && a.country !== 'United States' ? a.country : '']
+    .filter(Boolean).map(esc).join('<br/>');
+
+  // Existing quote, else the order's items at their shop prices, else one line for the custom job.
+  function startingLines(r) {
+    if (r.quote && r.quote.lines && r.quote.lines.length) return r.quote.lines.map(l => ({ desc: l.desc, qty: l.qty, unit: centsToInput(l.unit) }));
+    if (r.items && r.items.length) return r.items.map(i => ({
+      desc: `${i.name} — ${i.material === 'Special order' ? 'special order: ' + i.color : i.material + ', ' + i.color}`,
+      qty: i.qty, unit: i.price && toCents(i.price) !== null ? centsToInput(toCents(i.price)) : '',
+    }));
+    const legacy = toCents(r.price);
+    return [{ desc: r.service && r.service !== 'Shop order' ? `Custom 3D print — ${r.service.toLowerCase()}` : 'Custom 3D print', qty: 1, unit: legacy ? centsToInput(legacy) : '' }];
+  }
+
+  function renderQuoteLines() {
+    $('q-lines').innerHTML = QLINES.map((l, i) => `
+      <div class="q-line">
+        <input type="text" class="q-desc" value="${esc(l.desc)}" placeholder="Description" oninput="QLINES[${i}].desc=this.value"/>
+        <input type="number" class="q-qty" min="1" value="${l.qty}" oninput="QLINES[${i}].qty=this.value;quoteTotals()" title="Quantity"/>
+        <input type="text" class="q-money" value="${esc(l.unit)}" placeholder="Unit $" inputmode="decimal" oninput="QLINES[${i}].unit=this.value;quoteTotals()"/>
+        <span class="q-amt" id="q-amt-${i}"></span>
+        <button class="icon-btn" title="Remove line" onclick="QLINES.splice(${i},1);renderQuoteLines()">✕</button>
+      </div>`).join('') || '<p class="muted" style="font-size:0.85rem;">No lines yet.</p>';
+    quoteTotals();
+  }
+  function addQuoteLine() { QLINES.push({ desc: '', qty: 1, unit: '' }); renderQuoteLines(); $('q-lines').querySelectorAll('.q-desc')[QLINES.length - 1].focus(); }
+  function quoteTotals() {
+    let sub = 0;
+    QLINES.forEach((l, i) => {
+      const c = toCents(l.unit), q = Math.max(1, parseInt(l.qty, 10) || 1);
+      const el = $('q-amt-' + i);
+      if (el) el.textContent = c === null ? '?' : money(c * q);
+      if (c) sub += c * q;
+    });
+    const ship = toCents($('q-ship').value);
+    $('q-sub').textContent = money(sub);
+    $('q-total').textContent = money(sub + (ship || 0));
+  }
+  function quotePayload() {
+    const lines = QLINES.filter(l => String(l.desc).trim());
+    for (const l of lines) if (toCents(l.unit) === null) throw new Error(`“${l.desc}” has a price that isn't a number.`);
+    const shipping = toCents($('q-ship').value);
+    if (shipping === null) throw new Error('Shipping must be a number (or empty for free).');
+    return { lines: lines.map(l => ({ desc: String(l.desc).trim(), qty: Math.max(1, parseInt(l.qty, 10) || 1), unit: toCents(l.unit) })), shipping };
   }
 
   const fmtSize = (b) => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
@@ -528,7 +605,7 @@
     const id = $('req-drawer').dataset.id, r = REQUESTS.find(x => x.id === id);
     const amount = prompt(`Amount received for ${id} (${$('d-paymethod').value}):`, r.price || '');
     if (amount === null) return;
-    await updateRequest(id, { paid: { method: $('d-paymethod').value, amount } });
+    await updateRequest(id, { paid: { method: $('d-paymethod').value, amount }, notify: $('d-notify').checked });
   }
   async function markUnpaid() {
     const id = $('req-drawer').dataset.id;
@@ -538,7 +615,10 @@
 
   async function saveRequest() {
     const id = $('req-drawer').dataset.id;
-    await updateRequest(id, { status: $('d-status').value, price: $('d-price').value, customerMessage: $('d-msg').value, adminNote: $('d-note').value, notify: $('d-notify').checked });
+    let quote;
+    try { quote = quotePayload(); } catch (e) { toast(e.message); return; }
+    if ($('d-status').value === 'quoted' && !quote.lines.some(l => l.unit > 0)) { toast('Add at least one priced line before sending the quote.'); return; }
+    await updateRequest(id, { status: $('d-status').value, quote, customerMessage: $('d-msg').value, adminNote: $('d-note').value, notify: $('d-notify').checked });
   }
 
   async function deleteRequest() {

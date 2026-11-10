@@ -495,6 +495,11 @@
   .product-thumbs img.active { border-color: var(--mango); opacity: 1; }
   .hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
+  .ship-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.6rem; }
+  .ship-grid .ship-full { grid-column: 1 / -1; }
+  #ship_country { grid-column: 1 / -1; }
+  @media (max-width: 600px) { .ship-grid { grid-template-columns: 1fr 1fr; } #ship_city { grid-column: 1 / -1; } }
+
   /* ── SHOP ORDER SUMMARY (request page) ── */
   .order-items { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
   .order-item {
@@ -911,6 +916,18 @@
           <input type="text" id="color-text" placeholder="Or describe a color / multi-color idea…" style="margin-top:0.75rem;"/>
         </div>
         <div class="form-full">
+          <label>Shipping Address</label>
+          <div class="ship-grid">
+            <input type="text" id="ship_line1" class="ship-full" placeholder="Street address" autocomplete="address-line1"/>
+            <input type="text" id="ship_line2" class="ship-full" placeholder="Apt, suite, unit (optional)" autocomplete="address-line2"/>
+            <input type="text" id="ship_city" placeholder="City" autocomplete="address-level2"/>
+            <input type="text" id="ship_state" placeholder="State" autocomplete="address-level1"/>
+            <input type="text" id="ship_zip" placeholder="ZIP" autocomplete="postal-code" inputmode="numeric"/>
+            <input type="text" id="ship_country" placeholder="Country" value="United States" autocomplete="country-name"/>
+          </div>
+          <p class="muted" style="font-size:0.8rem;margin-top:0.4rem;">Every order ships — we'll include shipping in your quote.</p>
+        </div>
+        <div class="form-full">
           <label id="desc-label">Project Description</label>
           <textarea id="description" placeholder="Tell me about your project — dimensions, use case, any special requirements, quantity needed, timeline…"></textarea>
         </div>
@@ -963,8 +980,8 @@
           <div class="process-step">
             <div class="step-dot">4</div>
             <div class="step-text">
-              <h4>Delivery or Pickup</h4>
-              <p>Your finished print ships to you or is ready for local pickup.</p>
+              <h4>Shipped to You</h4>
+              <p>Your finished print is packed up and shipped right to your door.</p>
             </div>
           </div>
         </div>
@@ -1522,6 +1539,11 @@
       if (!n.value) n.value = ME.name || '';
       if (!ph.value) ph.value = ME.phone || '';
       e.value = ME.email; e.readOnly = true; e.title = 'Signed in as ' + ME.email;
+      // Last shipping address, unless they've started typing one.
+      const a = ME.address;
+      if (a && !document.getElementById('ship_line1').value) {
+        for (const k of ['line1', 'line2', 'city', 'state', 'zip', 'country']) document.getElementById('ship_' + k).value = a[k] || '';
+      }
     } else {
       const e = document.getElementById('email'); e.readOnly = false; e.title = '';
     }
@@ -1631,7 +1653,9 @@
           ${r.files && r.files.length ? `<div class="req-files" style="margin-top:0.5rem;">${r.files.map(f => `<a href="/api/files/${encodeURIComponent(r.id)}/${f.n}" onclick='downloadFile(${JSON.stringify(r.id)}, ${esc(JSON.stringify(f))}, this); return false;'>📎 ${esc(f.name)}</a>`).join('')}</div>` : ''}
           ${(r.price || r.customerMessage) ? `<div class="req-quote">
             ${r.price ? `<div class="price">${esc(r.price)}</div>` : ''}
-            ${r.customerMessage ? `<div class="req-body" style="color:var(--text);">${esc(r.customerMessage)}</div>` : ''}
+            ${r.quote && r.quote.lines && r.quote.lines.length ? `<div class="pay-note" style="margin-top:0;">Items ${money(r.quote.subtotal)} · Shipping ${r.quote.shipping ? money(r.quote.shipping) : 'free'}</div>` : ''}
+            ${r.customerMessage ? `<div class="req-body" style="color:var(--text);margin-top:0.5rem;">${esc(r.customerMessage)}</div>` : ''}
+            ${r.viewToken && r.price ? `<a class="link-btn" style="display:inline-block;margin-top:0.6rem;" href="/invoice/?id=${encodeURIComponent(r.id)}&t=${encodeURIComponent(r.viewToken)}">View ${r.paid ? 'invoice' : 'quote'} →</a>` : ''}
             ${quoteActions(r)}
           </div>` : ''}
         </div>`).join('');
@@ -1658,7 +1682,7 @@
     if (payable) {
       html += `<button class="btn-primary" style="margin-top:0.9rem;" onclick="payQuote('${id}', this)">${r.status === 'quoted' ? 'Approve &amp; pay' : 'Pay'} ${money(amount)} →</button>`;
       html += `<div class="pay-note">Secure card payment by Stripe · Apple Pay &amp; Google Pay accepted</div>`;
-      if (r.status === 'quoted') html += `<button class="link-btn" style="margin-top:0.6rem;" onclick="approveQuote('${id}', this)">Approve now, pay later (cash / Venmo)</button>`;
+      if (r.status === 'quoted') html += `<button class="link-btn" style="margin-top:0.6rem;" onclick="approveQuote('${id}', this)">Approve now, pay another way</button>`;
     } else if (r.status === 'quoted') {
       html += `<button class="btn-primary" style="margin-top:0.9rem;" onclick="approveQuote('${id}', this)">Approve quote →</button>`;
     }
@@ -1794,6 +1818,13 @@
       alert('Please describe your project before submitting.');
       return;
     }
+    const ship = {};
+    for (const k of ['line1', 'line2', 'city', 'state', 'zip', 'country']) ship[k] = document.getElementById('ship_' + k).value.trim();
+    if (!ship.line1 || !ship.city || !ship.state || !ship.zip) {
+      alert('Please enter your shipping address (street, city, state and ZIP) so we can include shipping in your quote.');
+      document.getElementById(['line1', 'city', 'state', 'zip'].map(k => 'ship_' + k).find(id => !document.getElementById(id).value.trim())).focus();
+      return;
+    }
 
     const btn = document.querySelector('.form-submit .btn-primary');
     const fileInput = document.getElementById('fileInput');
@@ -1842,6 +1873,7 @@
     apiData.append('message', description);
     apiData.append('items', JSON.stringify(items));
     apiData.append('website', document.getElementById('website').value);
+    for (const [k, v] of Object.entries(ship)) apiData.append('ship_' + k, v);
     apiData.append('uploads', JSON.stringify(uploadIds));
 
     try {
@@ -1871,9 +1903,10 @@
     formData.append('service', service || 'Not specified');
     formData.append('material', material);
     formData.append('color', colorText || 'Not specified');
-    formData.append('message', orderMode
+    const shipText = '\n\nShip to:\n' + [ship.line1, ship.line2, `${ship.city}, ${ship.state} ${ship.zip}`, ship.country].filter(Boolean).join('\n');
+    formData.append('message', (orderMode
       ? 'SHOP ORDER:\n' + cart.map(i => `• ${i.name} — ${i.material}, ${i.color}, Qty: ${i.qty}`).join('\n') + (description ? '\n\nNotes: ' + description : '')
-      : description);
+      : description) + shipText);
 
     if (fileInput.files[0]) {
       formData.append('attachment', fileInput.files[0]);
