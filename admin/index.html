@@ -509,7 +509,7 @@
         <div><label>Private note (only you see this)</label><textarea id="d-note">${esc(r.adminNote)}</textarea></div>
         <div><label>Payment</label>${r.paid
           ? `<div class="row"><span class="paid-pill">PAID ${money(r.paid.amount)}</span><span class="muted">${esc(r.paid.method)} · ${fmtDate(r.paid.at)}</span><span class="grow"></span><button class="btn-ghost" onclick="markUnpaid()">Mark unpaid</button></div>`
-          : `<div class="row"><span class="muted">Not paid yet.</span><span class="grow"></span><select id="d-paymethod" style="width:auto;"><option>cash</option><option>venmo</option><option>zelle</option><option>check</option><option>other</option></select><button class="btn-ghost" onclick="markPaid()">Mark paid</button></div>`}
+          : `<div class="row"><span class="muted">Not paid yet — customers pay by card through Stripe, and the order marks itself paid.</span><span class="grow"></span><button class="btn-ghost" style="padding:0.35rem 0.8rem;font-size:0.8rem;" onclick="markPaid()" title="Only for an exception, e.g. a payment you took outside the site">Mark paid manually</button></div>`}
         </div>
         <label class="check"><input type="checkbox" id="d-notify"/> Email the customer about this update</label>
         <div class="row"><button class="btn" onclick="saveRequest()">Save</button><span class="grow"></span><button class="btn-ghost btn-danger" onclick="deleteRequest()">Delete</button></div>
@@ -603,9 +603,9 @@
 
   async function markPaid() {
     const id = $('req-drawer').dataset.id, r = REQUESTS.find(x => x.id === id);
-    const amount = prompt(`Amount received for ${id} (${$('d-paymethod').value}):`, r.price || '');
+    const amount = prompt(`Mark ${id} as paid outside Stripe. Amount received:`, r.price || '');
     if (amount === null) return;
-    await updateRequest(id, { paid: { method: $('d-paymethod').value, amount }, notify: $('d-notify').checked });
+    await updateRequest(id, { paid: { method: 'manual', amount }, notify: $('d-notify').checked });
   }
   async function markUnpaid() {
     const id = $('req-drawer').dataset.id;

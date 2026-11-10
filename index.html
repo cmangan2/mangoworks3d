@@ -1682,8 +1682,7 @@
     if (payable) {
       html += `<button class="btn-primary" style="margin-top:0.9rem;" onclick="payQuote('${id}', this)">${r.status === 'quoted' ? 'Approve &amp; pay' : 'Pay'} ${money(amount)} →</button>`;
       html += `<div class="pay-note">Secure card payment by Stripe · Apple Pay &amp; Google Pay accepted</div>`;
-      if (r.status === 'quoted') html += `<button class="link-btn" style="margin-top:0.6rem;" onclick="approveQuote('${id}', this)">Approve now, pay another way</button>`;
-    } else if (r.status === 'quoted') {
+    } else if (r.status === 'quoted' && !PAYMENTS) {
       html += `<button class="btn-primary" style="margin-top:0.9rem;" onclick="approveQuote('${id}', this)">Approve quote →</button>`;
     }
     return html;

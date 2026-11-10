@@ -254,7 +254,7 @@ async function invoiceView(r) {
     items: r.items || [], quote: q, customerMessage: r.customerMessage,
     status: r.status, statusLabel: statusLabel(r.status), paid: r.paid || null,
     payable: Boolean(paymentsEnabled() && q?.total >= 50 && !r.paid && PAYABLE.has(r.status)),
-    canApprove: r.status === "quoted",
+    canApprove: r.status === "quoted" && !paymentsEnabled(),
     business: { name: "MangoWorks3D", email: "mangoworks3D@gmail.com" },
   };
 }
@@ -277,8 +277,10 @@ route("POST", "/invoice/([\\w-]+)/(approve|checkout|confirm)", async ({ req, url
   return json(await invoiceView(r));
 });
 
+// Approving without paying is only for when online payment is off (before Stripe is set up).
 async function approveRequest(r, site) {
   if (r.status !== "quoted") throw new HttpError(409, "This request isn't waiting for your approval.");
+  if (paymentsEnabled()) throw new HttpError(409, "Please approve the quote by paying online.");
   const now = new Date().toISOString();
   r.status = "approved"; r.updated = now;
   r.history.push({ at: now, status: "approved", by: "customer" });
@@ -471,9 +473,8 @@ route("PATCH", "/admin/requests/([\\w-]+)", async ({ req, url, params: [id] }) =
     if (r.customerMessage) lines.push("", r.customerMessage);
     if (r.status === "quoted" && q) {
       lines.push("", paymentsEnabled() && q.total >= 50
-        ? `View your quote, approve and pay online here:\n${invoiceUrl(r, site)}`
-        : `View and approve your quote here:\n${invoiceUrl(r, site)}`,
-        "", "Prefer to pay another way? Just reply to this email.");
+        ? `View your quote, approve and pay securely online here:\n${invoiceUrl(r, site)}`
+        : `View and approve your quote here:\n${invoiceUrl(r, site)}`);
     } else if (q) {
       lines.push("", `Your invoice: ${invoiceUrl(r, site)}`);
     } else {

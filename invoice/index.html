@@ -170,11 +170,10 @@
 
     const a = [];
     if (inv.payable) {
-      a.push(`<button class="btn" id="pay-btn" onclick="pay()">${inv.canApprove ? 'Approve &amp; pay' : 'Pay'} ${money(q.total)} →</button>`);
+      a.push(`<button class="btn" id="pay-btn" onclick="pay()">${inv.status === 'quoted' ? 'Approve &amp; pay' : 'Pay'} ${money(q.total)} →</button>`);
     }
-    if (inv.canApprove) {
-      a.push(`<button class="btn-ghost" onclick="approve(this)">${inv.payable ? 'Approve now, pay another way' : 'Approve quote'}</button>`);
-    }
+    // Only offered while online payment is switched off.
+    if (inv.canApprove) a.push(`<button class="btn" onclick="approve(this)">Approve quote →</button>`);
     a.push(`<button class="btn-ghost" onclick="window.print()">Print / Save PDF</button>`);
     if (inv.payable) a.push(`<div class="secure">Secure card payment by Stripe · Apple Pay &amp; Google Pay accepted</div>`);
     document.getElementById('actions').innerHTML = a.join('');
