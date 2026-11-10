@@ -44,8 +44,11 @@
   .totals .grand { border-top: 2px solid var(--ink); margin-top: 0.35rem; padding-top: 0.6rem; font-weight: 900; font-size: 1.25rem; }
   .totals .grand span:last-child { color: var(--mango); }
   .note { margin-top: 1.75rem; background: #FFF6EA; border-left: 4px solid var(--mango); border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.92rem; line-height: 1.6; white-space: pre-wrap; }
+  /* PAID stamp sits beside the totals, clear of the header text. */
+  .totals-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .totals-row .totals { margin-left: auto; }
   .stamp {
-    position: absolute; top: 120px; right: 40px; transform: rotate(-12deg);
+    margin-left: 1.5rem; transform: rotate(-12deg); flex-shrink: 0;
     border: 4px solid var(--teal); color: var(--teal); border-radius: 10px; padding: 0.3rem 1rem;
     font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; letter-spacing: 4px; opacity: 0.85; pointer-events: none;
   }
@@ -71,7 +74,8 @@
     .meta { justify-content: start; }
     .meta dt, .meta dd { text-align: left; }
     .parties { grid-template-columns: 1fr; }
-    .stamp { top: 96px; right: 14px; font-size: 1.9rem; }
+    .totals-row { flex-direction: column-reverse; align-items: stretch; }
+    .stamp { align-self: center; margin: 1rem 0 0; font-size: 2rem; }
     .hide-sm { display: none; }
   }
   @media print {
@@ -130,7 +134,6 @@
         <td class="num">${i.qty}</td><td class="num hide-sm">—</td><td class="num">—</td></tr>`).join('');
     document.getElementById('doc').innerHTML = `
       <div class="paper">
-        ${inv.paid ? '<div class="stamp">PAID</div>' : ''}
         <div class="head">
           <div class="brand">
             <img src="/images/logo.png" alt=""/>
@@ -155,10 +158,13 @@
           <thead><tr><th>Description</th><th class="num">Qty</th><th class="num hide-sm">Unit price</th><th class="num">Amount</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>` : ''}
-        ${q ? `<div class="totals">
-          <div><span>Subtotal</span><span>${money(q.subtotal)}</span></div>
-          <div><span>Shipping</span><span>${q.shipping ? money(q.shipping) : 'Free'}</span></div>
-          <div class="grand"><span>Total</span><span>${money(q.total)}</span></div>
+        ${q ? `<div class="totals-row">
+          ${inv.paid ? '<div class="stamp">PAID</div>' : ''}
+          <div class="totals">
+            <div><span>Subtotal</span><span>${money(q.subtotal)}</span></div>
+            <div><span>Shipping</span><span>${q.shipping ? money(q.shipping) : 'Free'}</span></div>
+            <div class="grand"><span>Total</span><span>${money(q.total)}</span></div>
+          </div>
         </div>` : `<p class="pending">We're preparing your quote — you'll get an email as soon as it's ready.</p>`}
         ${inv.customerMessage ? `<div class="note">${esc(inv.customerMessage)}</div>` : ''}
         ${inv.paid ? `<p class="paidline">✓ Paid ${money(inv.paid.amount)}${inv.paid.method === 'card' ? ' by card' : ' (' + esc(inv.paid.method) + ')'} on ${fmtDate(inv.paid.at)}. Thank you!</p>` : ''}
