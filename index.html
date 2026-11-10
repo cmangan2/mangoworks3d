@@ -620,7 +620,7 @@
   .cart-fab:hover { transform: scale(1.05); background: var(--mango-light); }
   .cart-fab.hidden { display: none; }
   .cart-drawer {
-    position: fixed; top: 0; right: -420px; bottom: 0; width: 400px; z-index: 300;
+    position: fixed; top: 0; right: -420px; bottom: 0; width: min(400px, 88vw); z-index: 300;
     background: var(--bg2);
     border-left: 1px solid rgba(255,255,255,0.08);
     display: flex; flex-direction: column;
@@ -814,19 +814,19 @@
 </div>
 
 <!-- Cart drawer -->
-<div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
 <div class="cart-drawer" id="cart-drawer">
   <div class="cart-header">
     <h3>Your Order</h3>
-    <button class="cart-close" onclick="toggleCart()">✕</button>
+    <button class="cart-close" onclick="closeCart()" aria-label="Close">✕</button>
   </div>
   <div class="cart-items" id="cart-items"></div>
   <div class="cart-footer">
-    <p>Ready to order? Click below and we'll send you a quote for everything in your cart.</p>
-    <button class="btn-primary" style="width:100%;justify-content:center;" onclick="sendCartToQuote()">Request a Quote →</button>
+    <p>Ready to order? Review your items, add any notes and send it over — we'll confirm the price before anything is charged.</p>
+    <button class="btn-primary" style="width:100%;justify-content:center;" onclick="sendCartToQuote()">Review &amp; Send Order →</button>
   </div>
 </div>
-<button class="cart-fab hidden" id="cart-fab" onclick="toggleCart()">🛒 View Order <span id="cart-count">0</span></button>
+<button class="cart-fab hidden" id="cart-fab" onclick="openCart()">🛒 View Order <span id="cart-count">0</span></button>
 
 <!-- ══════════════ CUSTOM REQUEST PAGE ══════════════ -->
 <div id="page-request" class="page">
@@ -1346,7 +1346,7 @@
     const qty = qtys[id] || 1;
     cart.push({ type: 'design', productId: product.id, name: product.name, emoji: product.emoji || '🖨️', image: productImages(product)[0] || '', price: product.price || '', ...choice, qty });
     updateCart();
-    toggleCart();
+    openCart();
   }
 
   function addUploadToCart() {
@@ -1357,16 +1357,13 @@
     if (!choice) return;
     cart.push({ type: 'upload', name: fileInput.files[0].name, file: fileInput.files[0], emoji: '📁', image: '', price: '', ...choice, qty });
     updateCart();
-    toggleCart();
+    openCart();
   }
 
   function removeFromCart(index) {
     cart.splice(index, 1);
     updateCart();
-    if (cart.length === 0) {
-      document.getElementById('cart-drawer').classList.remove('open');
-      document.getElementById('cart-overlay').classList.remove('open');
-    }
+    if (cart.length === 0) closeCart();
     if (currentPage === 'request') setRequestMode();
   }
 
@@ -1453,16 +1450,20 @@
     `).join('');
   }
 
-  function toggleCart() {
-    const drawer = document.getElementById('cart-drawer');
-    const overlay = document.getElementById('cart-overlay');
-    drawer.classList.toggle('open');
-    overlay.classList.toggle('open');
+  // The drawer and its dimmed backdrop always open and close together
+  // (toggling them separately could leave the page dimmed with no drawer).
+  function setCartOpen(open) {
+    open = open && cart.length > 0;
+    document.getElementById('cart-drawer').classList.toggle('open', open);
+    document.getElementById('cart-overlay').classList.toggle('open', open);
   }
+  const openCart = () => setCartOpen(true);
+  const closeCart = () => setCartOpen(false);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCart(); });
 
   function sendCartToQuote() {
     if (cart.length === 0) return;
-    toggleCart();
+    closeCart();
     showPage('request');
   }
 
@@ -1484,6 +1485,7 @@
     if (name === 'account') renderAccount();
     if (name === 'request') setRequestMode();
     updateCart();
+    closeCart();
   }
   window.addEventListener('popstate', (e) => {
     // Plain #anchor jumps (e.g. #services) carry no state: leave them alone.
