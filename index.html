@@ -202,6 +202,14 @@
     color: var(--mango); margin-bottom: 0.5rem;
   }
   .mat-pop ul { list-style: none; margin: 0; padding: 0; }
+  .mat-pop { width: 260px; }
+  .mat-pop-note { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; line-height: 1.5; color: var(--text-muted); white-space: normal; }
+  .stock-note {
+    margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: 10px;
+    background: rgba(255,140,0,0.08); border: 1px solid rgba(255,140,0,0.22);
+    font-size: 0.85rem; line-height: 1.55; color: var(--text-muted);
+  }
+  .stock-note strong { color: var(--mango); }
   .mat-pop li { font-size: 0.95rem; font-weight: 600; padding: 0.2rem 0; white-space: nowrap; }
   .mat-pop li::before { content: '●'; color: var(--mango); font-size: 0.55rem; margin-right: 0.6rem; vertical-align: middle; }
 
@@ -697,8 +705,9 @@
       <div class="stat-num" id="stat-materials">6</div>
       <div class="stat-label">Materials Available</div>
       <div class="mat-pop" id="mat-pop" role="tooltip">
-        <div class="mat-pop-title">Materials</div>
+        <div class="mat-pop-title">In Stock</div>
         <ul id="mat-pop-list"></ul>
+        <p class="mat-pop-note stock-note-text">These materials and colors are in stock. For custom jobs we can order any Bambu Lab filament (preferred) or other brands — just tell us what you need.</p>
       </div>
     </div>
     <div>
@@ -757,6 +766,8 @@
     </h1>
     <p style="color:var(--text-muted);font-size:1.05rem;line-height:1.7;max-width:560px;">
       Browse our catalog of ready-made designs. Choose your material, color, and quantity — then request your order. Have your own file? Upload it below.
+    </p>
+    <p class="stock-note stock-note-text" style="max-width:560px;">These materials and colors are in stock. For custom jobs we can order any Bambu Lab filament (preferred) or other brands — just tell us what you need.
     </p>
   </div>
 
@@ -844,8 +855,10 @@
             <div class="material-chip" onclick="selectMaterial(this)">ASA</div>
             <div class="material-chip" onclick="selectMaterial(this)">TPU AMS</div>
             <div class="material-chip" onclick="selectMaterial(this)">TPU 95A HF</div>
+            <div class="material-chip" onclick="selectMaterial(this)">Special order</div>
             <div class="material-chip" onclick="selectMaterial(this)">Not sure</div>
           </div>
+          <p class="stock-note stock-note-text">These materials and colors are in stock. For custom jobs we can order any Bambu Lab filament (preferred) or other brands — just tell us what you need.</p>
         </div>
         <div class="form-full">
           <label>Color Preference</label>
@@ -1080,6 +1093,12 @@
       bar.style.display = 'none';
       document.documentElement.style.setProperty('--announce-h', '0px');
     }
+    if (SETTINGS.stockNote !== undefined) {
+      document.querySelectorAll('.stock-note-text').forEach(el => {
+        el.textContent = SETTINGS.stockNote;
+        el.style.display = SETTINGS.stockNote ? '' : 'none';
+      });
+    }
     const badge = document.getElementById('hero-badge');
     if (SETTINGS.heroBadge !== undefined) {
       badge.textContent = SETTINGS.heroBadge;
@@ -1214,7 +1233,8 @@
     if (!grid) return;
     grid.innerHTML = MATERIALS.map(m =>
       `<div class="material-chip" onclick="selectMaterial(this)">${esc(m)}</div>`
-    ).join('') + `<div class="material-chip" onclick="selectMaterial(this)">Not sure</div>`;
+    ).join('') + `<div class="material-chip" onclick="selectMaterial(this)">Special order</div>`
+      + `<div class="material-chip" onclick="selectMaterial(this)">Not sure</div>`;
   }
 
   function populateColorSwatches(colors) {
@@ -1494,8 +1514,15 @@
   function selectMaterial(el) {
     document.querySelectorAll('.material-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
-    const colors = getColorsForMaterial(el.textContent.trim());
+    const mat = el.textContent.trim();
+    const colors = getColorsForMaterial(mat);
     populateColorSwatches(colors);
+    // Special order: ask which filament they want.
+    const ct = document.getElementById('color-text');
+    ct.placeholder = mat === 'Special order'
+      ? 'Which filament? e.g. Bambu Lab PLA Matte — Ash Gray'
+      : 'Or describe a color / multi-color idea…';
+    if (mat === 'Special order') ct.focus();
   }
 
   function selectColor(el) {

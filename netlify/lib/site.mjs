@@ -18,6 +18,7 @@ export const DEFAULT_MATERIALS = {
 export const DEFAULT_SETTINGS = {
   announcement: "",               // banner across the top of the site; empty = hidden
   heroBadge: "Based in New Hampshire",
+  stockNote: "These materials and colors are in stock. For custom jobs we can order any Bambu Lab filament (preferred) or other brands — just tell us what you need.", // materials popup, quote form, shop
   notifyEmail: "mangoworks3d@gmail.com", // where new-request alerts go
 };
 
@@ -61,6 +62,7 @@ export function sanitizeSettings(body) {
   return {
     announcement: s(body?.announcement, 300),
     heroBadge: s(body?.heroBadge, 60),
+    stockNote: s(body?.stockNote, 400),
     notifyEmail: s(body?.notifyEmail, 200),
   };
 }

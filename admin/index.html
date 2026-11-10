@@ -247,6 +247,11 @@
       <p class="muted" style="margin-top:0.35rem;font-size:0.8rem;">The small pill above “YOUR IDEAS PRINTED.”</p>
     </div>
     <div class="card">
+      <label>In-stock / special-order note</label>
+      <textarea id="s-stockNote" maxlength="400" style="min-height:70px;"></textarea>
+      <p class="muted" style="margin-top:0.35rem;font-size:0.8rem;">Shown in the materials popup, under the quote form's material choices, and on the Shop page. Leave empty to hide.</p>
+    </div>
+    <div class="card">
       <label>Send new-request alerts to</label>
       <input type="email" id="s-notifyEmail" maxlength="200"/>
       <p class="muted" style="margin-top:0.35rem;font-size:0.8rem;">Every new quote/order and every quote a customer approves is emailed here.</p>
@@ -523,7 +528,7 @@
     const d = await api('/admin/site');
     CATALOG = d.catalog; MATERIALS = d.materials;
     renderProducts(); renderMaterials(); setMatDirty(false);
-    for (const k of ['announcement', 'heroBadge', 'notifyEmail']) $('s-' + k).value = d.settings[k] || '';
+    for (const k of ['announcement', 'heroBadge', 'stockNote', 'notifyEmail']) $('s-' + k).value = d.settings[k] || '';
   }
 
   // ── Products ──
@@ -683,7 +688,7 @@
   // ── Settings ──
   async function saveSettings() {
     const body = {};
-    for (const k of ['announcement', 'heroBadge', 'notifyEmail']) body[k] = $('s-' + k).value.trim();
+    for (const k of ['announcement', 'heroBadge', 'stockNote', 'notifyEmail']) body[k] = $('s-' + k).value.trim();
     try { await api('/admin/settings', { method: 'PUT', body }); toast('Settings saved.'); } catch (e) { toast(e.message); }
   }
 
