@@ -110,6 +110,9 @@
   .kv dd { overflow-wrap: anywhere; }
   .pre { white-space: pre-wrap; font-size: 0.9rem; line-height: 1.55; overflow-wrap: anywhere; }
   .items { padding-left: 1.1rem; line-height: 1.7; font-size: 0.92rem; }
+  .paid-pill, .unpaid-pill { display: inline-block; font-size: 0.68rem; font-weight: 900; letter-spacing: 1px; padding: 0.15rem 0.55rem; border-radius: 50px; vertical-align: middle; }
+  .paid-pill { background: rgba(0,201,167,0.18); color: var(--teal); }
+  .unpaid-pill { background: rgba(255,107,107,0.15); color: var(--red); }
   .history { font-size: 0.82rem; color: var(--text-muted); line-height: 1.7; }
   .check { display: flex; gap: 0.5rem; align-items: center; font-size: 0.9rem; cursor: pointer; }
   .check input { width: auto; }
@@ -392,6 +395,9 @@
   const badge = (s) => `<span class="status-badge st-${esc(s)}">${esc(statusLabel(s))}</span>`;
   const statusOptions = (cur) => STATUSES.map(s => `<option value="${s.id}"${s.id === cur ? ' selected' : ''}>${esc(s.label)}</option>`).join('');
   const CLOSED = ['completed', 'cancelled'];
+  const money = (c) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const payPill = (r) => r.paid ? `<span class="paid-pill">PAID</span>`
+    : (['quoted', 'approved', 'printing', 'ready', 'shipped'].includes(r.status) && r.price ? `<span class="unpaid-pill">UNPAID</span>` : '');
 
   async function loadRequests() {
     try {
@@ -417,7 +423,7 @@
       const what = r.items && r.items.length ? r.items.map(i => `${i.name} ×${i.qty}`).join(', ') : (r.service || '') + (r.message ? ' — ' + r.message : '');
       return `<div class="req-row" onclick="openRequest('${esc(r.id)}')">
         <div style="min-width:0;">
-          <div class="title">${esc(r.name)} <span class="muted" style="font-weight:600;">· ${esc(r.id)} · ${r.kind === 'order' ? 'Shop order' : 'Quote'}${r.price ? ' · ' + esc(r.price) : ''}</span></div>
+          <div class="title">${esc(r.name)} <span class="muted" style="font-weight:600;">· ${esc(r.id)} · ${r.kind === 'order' ? 'Shop order' : 'Quote'}${r.price ? ' · ' + esc(r.price) : ''}</span> ${payPill(r)}</div>
           <div class="sub">${fmtDate(r.created)} · ${esc(what)}</div>
         </div>
         <div class="row" onclick="event.stopPropagation()">
@@ -476,6 +482,10 @@
         </div>
         <div><label>Message to customer</label><textarea id="d-msg" placeholder="Shown in their account and included in the email">${esc(r.customerMessage)}</textarea></div>
         <div><label>Private note (only you see this)</label><textarea id="d-note">${esc(r.adminNote)}</textarea></div>
+        <div><label>Payment</label>${r.paid
+          ? `<div class="row"><span class="paid-pill">PAID ${money(r.paid.amount)}</span><span class="muted">${esc(r.paid.method)} · ${fmtDate(r.paid.at)}</span><span class="grow"></span><button class="btn-ghost" onclick="markUnpaid()">Mark unpaid</button></div>`
+          : `<div class="row"><span class="muted">Not paid yet.</span><span class="grow"></span><select id="d-paymethod" style="width:auto;"><option>cash</option><option>venmo</option><option>zelle</option><option>check</option><option>other</option></select><button class="btn-ghost" onclick="markPaid()">Mark paid</button></div>`}
+        </div>
         <label class="check"><input type="checkbox" id="d-notify"/> Email the customer about this update</label>
         <div class="row"><button class="btn" onclick="saveRequest()">Save</button><span class="grow"></span><button class="btn-ghost btn-danger" onclick="deleteRequest()">Delete</button></div>
       </div>
@@ -507,6 +517,18 @@
       setTimeout(() => URL.revokeObjectURL(a.href), 60000);
     } catch (e) { toast(e.message); }
     link.textContent = label;
+  }
+
+  async function markPaid() {
+    const id = $('req-drawer').dataset.id, r = REQUESTS.find(x => x.id === id);
+    const amount = prompt(`Amount received for ${id} (${$('d-paymethod').value}):`, r.price || '');
+    if (amount === null) return;
+    await updateRequest(id, { paid: { method: $('d-paymethod').value, amount } });
+  }
+  async function markUnpaid() {
+    const id = $('req-drawer').dataset.id;
+    if (!confirm(`Mark ${id} as not paid? (This doesn't refund anything in Stripe.)`)) return;
+    await updateRequest(id, { paid: null });
   }
 
   async function saveRequest() {

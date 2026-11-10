@@ -14,6 +14,8 @@ Static site (`index.html`) plus a Netlify Functions API (`netlify/functions/api.
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Outgoing mail, e.g. Gmail: `smtp.gmail.com` / `465` / `mangoworks3d@gmail.com` / an App Password. |
 | `MAIL_FROM` | Optional, e.g. `MangoWorks3D <mangoworks3d@gmail.com>`. |
 | `RESEND_API_KEY` | Optional alternative to SMTP (needs a verified domain in Resend). |
+| `STRIPE_SECRET_KEY` | Turns on card payments: customers get "Approve & pay" on quotes with a price. |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret of a Stripe webhook to `https://<site>/api/stripe/webhook` (event `checkout.session.completed`); records payments even if the customer closes the tab. |
 
 Without mail settings, sign-in refuses with a message saying email isn't set up (unless `MW_DEV_SHOW_CODE=1` locally), and notifications are only written to the function log.
 

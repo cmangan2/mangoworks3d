@@ -6,6 +6,7 @@ import {
 import { startLogin, verifyLogin, currentUser, sessionCookie, clearCookie, logout } from "../lib/auth.mjs";
 import { trySendMail } from "../lib/mail.mjs";
 import { startUpload, putChunk, attachUploads, getChunk, deleteUpload } from "../lib/uploads.mjs";
+import { paymentsEnabled, parseAmountCents, fmtCents, createCheckout, getCheckout, verifyWebhook } from "../lib/stripe.mjs";
 import {
   getMaterials, getCatalog, getSettings, sanitizeMaterials, sanitizeCatalog, sanitizeSettings,
 } from "../lib/site.mjs";
@@ -101,6 +102,7 @@ route("GET", "/site", async () => {
     catalog: { items: catalog.items.filter((p) => p.active !== false) },
     settings: publicSettings,
     statuses: STATUSES,
+    payments: paymentsEnabled(),
   });
 });
 
@@ -244,6 +246,73 @@ route("POST", "/my/requests/([\\w-]+)/approve", async ({ req, url, params: [id] 
   return json(publicRequest(r));
 });
 
+// ── Payments (Stripe Checkout) ──────────────────────────────────────────
+const PAYABLE = new Set(["quoted", "approved"]);
+
+// Record a payment once (webhook and the customer's return can both report it).
+async function markPaid(r, { amount, method, sessionId = "", paymentIntent = "", by }, site) {
+  if (r.paid && (!sessionId || r.paid.sessionId === sessionId)) return r;
+  const now = new Date().toISOString();
+  r.paid = { amount, method, at: now, by, sessionId, paymentIntent };
+  if (r.status === "quoted") r.status = "approved";
+  r.history.push({ at: now, status: r.status, by: `${by} — paid ${fmtCents(amount)} (${method})` });
+  r.updated = now;
+  await saveRequest(r);
+  if (method === "card") {
+    const settings = await getSettings();
+    await trySendMail({
+      to: settings.notifyEmail, replyTo: r.email,
+      subject: `Payment received: ${fmtCents(amount)} for ${r.id} (${r.name})`,
+      text: `${r.name} paid ${fmtCents(amount)} by card for ${r.id}. The quote is now approved.
+
+${site}/admin/#${r.id}`,
+    });
+  }
+  return r;
+}
+
+route("POST", "/my/requests/([\\w-]+)/checkout", async ({ req, url, params: [id] }) => {
+  const u = await requireUser(req);
+  const r = await getRequest(id);
+  if (r.email !== u.email) throw new HttpError(404, "Request not found");
+  if (!paymentsEnabled()) throw new HttpError(409, "Online payment isn't available yet. Reply to your quote email to arrange payment.");
+  if (r.paid) throw new HttpError(409, "This order is already paid. Thank you!");
+  if (!PAYABLE.has(r.status)) throw new HttpError(409, "This request isn't ready for payment.");
+  const amount = parseAmountCents(r.price);
+  if (!amount) throw new HttpError(409, "This quote doesn't have a price to pay yet.");
+  const session = await createCheckout(r, amount, siteUrl(url));
+  r.checkout = { sessionId: session.id, amount, at: new Date().toISOString() };
+  await saveRequest(r);
+  return json({ url: session.url });
+});
+
+// The customer is back from Stripe: confirm with Stripe before believing it.
+route("POST", "/my/requests/([\\w-]+)/confirm", async ({ req, url, params: [id] }) => {
+  const u = await requireUser(req);
+  const r = await getRequest(id);
+  if (r.email !== u.email) throw new HttpError(404, "Request not found");
+  const { session: sessionId } = await readJson(req);
+  if (!r.paid && sessionId && paymentsEnabled()) {
+    const s = await getCheckout(String(sessionId));
+    if (s.client_reference_id === r.id && s.payment_status === "paid") {
+      await markPaid(r, { amount: s.amount_total, method: "card", sessionId: s.id, paymentIntent: s.payment_intent || "", by: "customer" }, siteUrl(url));
+    }
+  }
+  return json(publicRequest(r));
+});
+
+// Stripe → us. Set the endpoint to https://<site>/api/stripe/webhook, event checkout.session.completed.
+route("POST", "/stripe/webhook", async ({ req, url }) => {
+  const event = verifyWebhook(await req.text(), req.headers.get("stripe-signature"));
+  const s = event.data?.object;
+  if (["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(event.type) && s?.payment_status === "paid") {
+    const id = s.metadata?.requestId || s.client_reference_id;
+    const r = id && (await stores.requests().get(`req/${id}`, { type: "json" }));
+    if (r) await markPaid(r, { amount: s.amount_total, method: "card", sessionId: s.id, paymentIntent: s.payment_intent || "", by: "customer" }, siteUrl(url));
+  }
+  return json({ received: true });
+});
+
 // Chunked uploads (anyone filling in the form; ids are unguessable, unsubmitted ones expire).
 route("POST", "/uploads", async ({ req }) => json(await startUpload(await readJson(req))));
 
@@ -299,6 +368,16 @@ route("PATCH", "/admin/requests/([\\w-]+)", async ({ req, url, params: [id] }) =
   if (body.price !== undefined) r.price = clean(body.price, 60);
   if (body.customerMessage !== undefined) r.customerMessage = clean(body.customerMessage, 3000);
   if (body.adminNote !== undefined) r.adminNote = clean(body.adminNote, 5000);
+  if (body.paid === null && r.paid) {
+    r.history.push({ at: now, status: r.status, by: `${admin.email} — marked unpaid` });
+    delete r.paid;
+  } else if (body.paid && !r.paid) {
+    const amount = parseAmountCents(body.paid.amount ?? r.price);
+    if (!amount) throw new HttpError(400, "Set a price first, or enter the amount received.");
+    const method = clean(body.paid.method, 30) || "other";
+    r.paid = { amount, method, at: now, by: admin.email };
+    r.history.push({ at: now, status: r.status, by: `${admin.email} — paid ${fmtCents(amount)} (${method})` });
+  }
   r.updated = now;
   await saveRequest(r);
 
@@ -307,7 +386,11 @@ route("PATCH", "/admin/requests/([\\w-]+)", async ({ req, url, params: [id] }) =
     const lines = [`Hi ${r.name},`, "", `Update on your MangoWorks3D request ${r.id}: ${statusLabel(r.status)}.`];
     if (r.price) lines.push(`Price: ${r.price}`);
     if (r.customerMessage) lines.push("", r.customerMessage);
-    if (r.status === "quoted") lines.push("", `To approve the quote, sign in at ${site}/account with this email address, or just reply to this email.`);
+    if (r.status === "quoted") {
+      lines.push("", paymentsEnabled() && parseAmountCents(r.price)
+        ? `To approve and pay online, sign in at ${site}/account with this email address. Prefer cash or Venmo? Just reply to this email.`
+        : `To approve the quote, sign in at ${site}/account with this email address, or just reply to this email.`);
+    }
     else lines.push("", `See the details any time at ${site}/account.`);
     lines.push("", "— MangoWorks3D");
     const settings = await getSettings();

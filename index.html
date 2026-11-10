@@ -470,6 +470,8 @@
     background: rgba(255,140,0,0.08); border: 1px solid rgba(255,140,0,0.25);
   }
   .req-quote .price { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--mango); letter-spacing: 1px; }
+  .paid-line { margin-top: 0.75rem; color: var(--teal); font-weight: 800; }
+  .pay-note { margin-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); }
   .req-files a { color: var(--teal); font-size: 0.85rem; margin-right: 1rem; }
   .status-badge {
     display: inline-block; padding: 0.25rem 0.75rem; border-radius: 50px;
@@ -984,6 +986,7 @@
       </div>
     </div>
     <div id="account-signedin" style="display:none">
+      <div class="success-msg" id="pay-banner" style="display:none;margin:0 0 1.25rem;"></div>
       <div class="account-card">
         <div class="acct-head">
           <div>
@@ -1023,6 +1026,7 @@
 
   let SETTINGS = {};
   let STATUSES = [];
+  let PAYMENTS = false; // Stripe turned on (server has a key)
   let ME = { signedIn: false };
   let meLoaded = false;
 
@@ -1082,6 +1086,7 @@
     CATALOG = site ? site.catalog.items : [];
     SETTINGS = site ? site.settings : {};
     STATUSES = site ? site.statuses : [];
+    PAYMENTS = Boolean(site && site.payments);
     applySettings();
 
     // Populate home gallery
@@ -1375,9 +1380,11 @@
   });
 
   window.addEventListener('DOMContentLoaded', async () => {
+    const returned = new URLSearchParams(location.search); // ?paid=MW-…&session=… after Stripe
     if (location.pathname.startsWith('/account')) { currentPage = 'account'; showPage('account', true); }
     history.replaceState({ page: currentPage }, '', location.pathname + location.hash);
-    loadMe();
+    const me = loadMe();
+    if (returned.get('paid')) me.then(() => { if (ME.signedIn) confirmPayment(returned.get('paid'), returned.get('session')); });
     await loadData();
     buildShop();
     populateMaterialChips();
@@ -1508,13 +1515,62 @@
           ${(r.price || r.customerMessage) ? `<div class="req-quote">
             ${r.price ? `<div class="price">${esc(r.price)}</div>` : ''}
             ${r.customerMessage ? `<div class="req-body" style="color:var(--text);">${esc(r.customerMessage)}</div>` : ''}
-            ${r.status === 'quoted' ? `<button class="btn-primary" style="margin-top:0.9rem;" onclick="approveQuote('${esc(r.id)}', this)">Approve quote →</button>` : ''}
+            ${quoteActions(r)}
           </div>` : ''}
         </div>`).join('');
     } catch (e) {
       if (e.status === 401) { ME = { signedIn: false }; updateAccountUI(); return; }
       list.innerHTML = `<p class="muted">${esc(e.message)}</p>`;
     }
+  }
+
+  // "$1,234.50" / "From $12" -> cents, like the server.
+  function amountCents(price) {
+    const m = String(price || '').replace(/,/g, '').match(/(\d+(?:\.\d{1,2})?)/);
+    const c = m ? Math.round(parseFloat(m[1]) * 100) : 0;
+    return c >= 50 ? c : 0;
+  }
+  const money = (c) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+  function quoteActions(r) {
+    const id = esc(r.id);
+    if (r.paid) return `<div class="paid-line">✅ Paid ${money(r.paid.amount)} · ${fmtDate(r.paid.at)}</div>`;
+    const amount = amountCents(r.price);
+    const payable = PAYMENTS && amount && (r.status === 'quoted' || r.status === 'approved');
+    let html = '';
+    if (payable) {
+      html += `<button class="btn-primary" style="margin-top:0.9rem;" onclick="payQuote('${id}', this)">${r.status === 'quoted' ? 'Approve &amp; pay' : 'Pay'} ${money(amount)} →</button>`;
+      html += `<div class="pay-note">Secure card payment by Stripe · Apple Pay &amp; Google Pay accepted</div>`;
+      if (r.status === 'quoted') html += `<button class="link-btn" style="margin-top:0.6rem;" onclick="approveQuote('${id}', this)">Approve now, pay later (cash / Venmo)</button>`;
+    } else if (r.status === 'quoted') {
+      html += `<button class="btn-primary" style="margin-top:0.9rem;" onclick="approveQuote('${id}', this)">Approve quote →</button>`;
+    }
+    return html;
+  }
+
+  async function payQuote(id, btn) {
+    btn.disabled = true;
+    const label = btn.innerHTML;
+    btn.textContent = 'Opening secure checkout…';
+    try {
+      const { url } = await api('/my/requests/' + encodeURIComponent(id) + '/checkout', { method: 'POST' });
+      location.href = url;
+    } catch (e) { alert(e.message); btn.disabled = false; btn.innerHTML = label; }
+  }
+
+  // Back from Stripe: confirm the payment, then show the result.
+  async function confirmPayment(id, session) {
+    const banner = document.getElementById('pay-banner');
+    try {
+      const r = await api('/my/requests/' + encodeURIComponent(id) + '/confirm', { method: 'POST', body: { session } });
+      banner.textContent = r.paid
+        ? `✅ Payment received for ${r.id} — thank you! We'll get started and keep you posted.`
+        : `Thanks! Your payment for ${r.id} is processing — this page will show it as paid shortly.`;
+    } catch (e) {
+      banner.textContent = `Thanks! Your payment for ${id} is processing — this page will show it as paid shortly.`;
+    }
+    banner.style.display = 'block';
+    renderAccount();
   }
 
   async function approveQuote(id, btn) {
