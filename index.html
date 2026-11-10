@@ -280,11 +280,37 @@
   .service-link:hover { gap: 10px; }
 
   /* ── GALLERY ── */
+  /* Showcase carousel: equal square cards in a swipeable row, arrows + dots. */
+  .gallery-carousel { position: relative; }
   .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
+    display: flex; gap: 1rem;
+    overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    padding: 0.25rem 0.1rem;
   }
+  .gallery-grid::-webkit-scrollbar { display: none; }
+  .gallery-grid > .gallery-item { flex: 0 0 calc((100% - 3rem) / 4); scroll-snap-align: start; }
+  @media (max-width: 1000px) { .gallery-grid > .gallery-item { flex-basis: calc((100% - 2rem) / 3); } }
+  @media (max-width: 700px) { .gallery-grid > .gallery-item { flex-basis: calc((100% - 1rem) / 2); } }
+  @media (max-width: 460px) { .gallery-grid > .gallery-item { flex-basis: 78%; scroll-snap-align: center; } }
+  .gallery-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(13,13,13,0.85); border: 1px solid rgba(255,140,0,0.5); color: var(--mango);
+    font-size: 1.5rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.2s, background 0.2s;
+  }
+  .gallery-arrow:hover { background: var(--mango); color: #000; }
+  .gallery-arrow.prev { left: -14px; }
+  .gallery-arrow.next { right: -14px; }
+  .gallery-arrow[disabled] { opacity: 0; pointer-events: none; }
+  .gallery-dots { display: flex; justify-content: center; gap: 8px; margin-top: 1rem; }
+  .gallery-dots button {
+    width: 9px; height: 9px; border-radius: 50%; border: none; padding: 0; cursor: pointer;
+    background: rgba(255,255,255,0.25); transition: background 0.2s, width 0.2s;
+  }
+  .gallery-dots button.active { background: var(--mango); width: 22px; border-radius: 5px; }
+  @media (max-width: 600px) { .gallery-arrow { display: none; } }
   .gallery-item {
     border-radius: 12px;
     overflow: hidden;
@@ -298,7 +324,7 @@
     transition: transform 0.2s;
     cursor: pointer;
   }
-  .gallery-item:hover { transform: scale(1.03); }
+  .gallery-item:hover { border-color: var(--mango); }
   .gallery-item .gallery-label {
     position: absolute; bottom: 0; left: 0; right: 0;
     background: rgba(0,0,0,0.75);
@@ -306,7 +332,6 @@
     font-size: 0.8rem; font-weight: 700;
     color: var(--text);
   }
-  .gallery-item.span2 { grid-column: span 2; }
 
   /* ── CUSTOM REQUEST PAGE ── */
   .request-hero {
@@ -783,9 +808,14 @@
     <div class="section-label">Showcase</div>
     <h2 class="section-title">Fresh Off the Printer</h2>
     <p class="section-sub">A taste of what's possible — functional parts, artistic pieces, and everything in between.</p>
-    <div class="gallery-grid" id="home-gallery">
-      <!-- populated by JS from CMS catalog -->
+    <div class="gallery-carousel">
+      <button class="gallery-arrow prev" id="gallery-prev" aria-label="Previous" onclick="scrollGallery(-1)">‹</button>
+      <div class="gallery-grid" id="home-gallery">
+        <!-- populated from the product catalog -->
+      </div>
+      <button class="gallery-arrow next" id="gallery-next" aria-label="Next" onclick="scrollGallery(1)">›</button>
     </div>
+    <div class="gallery-dots" id="gallery-dots"></div>
   </section>
 
   <footer>
@@ -1176,20 +1206,59 @@
     const active = CATALOG.filter(p => p.active !== false);
     if (active.length === 0) {
       grid.innerHTML = '<p style="color:var(--text-muted);font-size:0.95rem;">No designs loaded yet — check back soon!</p>';
+      updateGalleryNav();
       return;
     }
-    grid.innerHTML = active.map((p, i) => {
-      const isWide = i === 0 || i === active.length - 1;
+    grid.innerHTML = active.map(p => {
       const img = productImages(p)[0];
       const thumb = img
-        ? `<img src="${esc(img)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:cover;"/>`
+        ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;"/>`
         : `<span style="font-size:3rem">${esc(p.emoji || '🖨️')}</span>`;
-      return `<div class="gallery-item${isWide ? ' span2' : ''}" onclick="showPage('shop')">
+      return `<div class="gallery-item" onclick="showPage('shop')">
         ${thumb}
         <div class="gallery-label">${esc(p.name)}</div>
       </div>`;
     }).join('');
+    updateGalleryNav();
   }
+
+  // ── Showcase carousel ──
+  const galleryTrack = () => document.getElementById('home-gallery');
+  function galleryPages() {
+    const t = galleryTrack(), item = t.querySelector('.gallery-item');
+    if (!item) return { count: 0, current: 0 };
+    const step = item.getBoundingClientRect().width + parseFloat(getComputedStyle(t).columnGap || 16);
+    const perView = Math.max(1, Math.round((t.clientWidth + 1) / step));
+    const count = Math.max(1, t.children.length - perView + 1);
+    const atEnd = t.scrollLeft + t.clientWidth >= t.scrollWidth - 4;
+    return { count, current: atEnd ? count - 1 : Math.min(count - 1, Math.round(t.scrollLeft / step)), step };
+  }
+  function scrollGallery(dir) {
+    const t = galleryTrack(), { step } = galleryPages();
+    t.scrollBy({ left: dir * step, behavior: 'smooth' });
+  }
+  function goGallery(i) {
+    const { step } = galleryPages();
+    galleryTrack().scrollTo({ left: i * step, behavior: 'smooth' });
+  }
+  function updateGalleryNav() {
+    const t = galleryTrack(), dots = document.getElementById('gallery-dots');
+    const { count, current } = galleryPages();
+    // Everything fits: no arrows, no dots.
+    const fits = count <= 1;
+    document.getElementById('gallery-prev').disabled = fits || t.scrollLeft <= 4;
+    document.getElementById('gallery-next').disabled = fits || t.scrollLeft + t.clientWidth >= t.scrollWidth - 4;
+    if (fits) { dots.innerHTML = ''; return; }
+    if (dots.children.length !== count) {
+      dots.innerHTML = Array.from({ length: count }, (_, i) => `<button aria-label="Go to ${i + 1}" onclick="goGallery(${i})"></button>`).join('');
+    }
+    [...dots.children].forEach((d, i) => d.classList.toggle('active', i === current));
+  }
+  let galleryRaf = 0;
+  galleryTrack().addEventListener('scroll', () => {
+    cancelAnimationFrame(galleryRaf); galleryRaf = requestAnimationFrame(updateGalleryNav);
+  }, { passive: true });
+  window.addEventListener('resize', () => updateGalleryNav());
 
   function getColorsForMaterial(matName) {
     const mat = MATERIALS_DATA.find(m => m.name === matName);
