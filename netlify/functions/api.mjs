@@ -1,7 +1,7 @@
 // MangoWorks3D API: one function serving /api/* (accounts, quotes/orders, admin).
 import {
   stores, json, err, HttpError, readJson, normEmail, isEmail, clean, refId, randomToken,
-  STATUSES, statusLabel, isAdminEmail,
+  STATUSES, statusLabel, isAdminEmail, normalizeStatus, CARRIERS, trackingUrl,
 } from "../lib/util.mjs";
 import { startLogin, verifyLogin, currentUser, sessionCookie, clearCookie, logout } from "../lib/auth.mjs";
 import { trySendMail } from "../lib/mail.mjs";
@@ -55,7 +55,8 @@ async function requireAdmin(req) {
 }
 
 // What a customer may see of their own request (no internal note).
-const publicRequest = ({ adminNote, ...r }) => r;
+const publicRequest = ({ adminNote, ...r }) =>
+  r.shipment ? { ...r, shipment: { ...r.shipment, url: trackingUrl(r.shipment) } } : r;
 
 async function listRequests(filterEmail) {
   const reqs = stores.requests();
@@ -68,13 +69,13 @@ async function listRequests(filterEmail) {
     keys = blobs.map((b) => b.key.slice(4));
   }
   const rows = await Promise.all(keys.map((id) => reqs.get(`req/${id}`, { type: "json" })));
-  return rows.filter(Boolean).sort((a, b) => b.created.localeCompare(a.created));
+  return rows.filter(Boolean).map(normalizeStatus).sort((a, b) => b.created.localeCompare(a.created));
 }
 
 async function getRequest(id) {
   const r = await stores.requests().get(`req/${id}`, { type: "json" });
   if (!r) throw new HttpError(404, "Request not found");
-  return r;
+  return normalizeStatus(r);
 }
 const saveRequest = (r) => stores.requests().setJSON(`req/${r.id}`, r);
 
@@ -253,6 +254,7 @@ async function invoiceView(r) {
     name: r.name, email: r.email, phone: r.phone, shipTo: r.shipTo || null,
     items: r.items || [], quote: q, customerMessage: r.customerMessage,
     status: r.status, statusLabel: statusLabel(r.status), paid: r.paid || null,
+    shipment: r.status === "shipped" && r.shipment ? { ...r.shipment, url: trackingUrl(r.shipment) } : null,
     payable: Boolean(paymentsEnabled() && q?.total >= 50 && !r.paid && PAYABLE.has(r.status)),
     canApprove: r.status === "quoted" && !paymentsEnabled(),
     business: { name: "MangoWorks3D", email: "mangoworks3D@gmail.com" },
@@ -445,6 +447,11 @@ route("PATCH", "/admin/requests/([\\w-]+)", async ({ req, url, params: [id] }) =
     ensureViewToken(r);
   }
   if (body.shipTo !== undefined) r.shipTo = parseAddress(body.shipTo, false);
+  if (body.shipment !== undefined) {
+    const carrier = CARRIERS.includes(body.shipment?.carrier) ? body.shipment.carrier : "Other";
+    const tracking = clean(body.shipment?.tracking, 60).replace(/\s+/g, "");
+    r.shipment = tracking || carrier !== "Other" ? { carrier, tracking, at: r.shipment?.at || now } : null;
+  }
   if (body.customerMessage !== undefined) r.customerMessage = clean(body.customerMessage, 3000);
   if (body.adminNote !== undefined) r.adminNote = clean(body.adminNote, 5000);
   if (body.paid === null && r.paid) {
@@ -468,7 +475,13 @@ route("PATCH", "/admin/requests/([\\w-]+)", async ({ req, url, params: [id] }) =
       for (const l of q.lines) lines.push(`  ${l.desc}${l.qty > 1 ? ` × ${l.qty}` : ""}  —  ${fmtCents(l.qty * l.unit)}`);
       lines.push(`  Shipping  —  ${q.shipping ? fmtCents(q.shipping) : "Free"}`, `  Total  —  ${fmtCents(q.total)}`);
     } else {
-      lines.push(`Update on your MangoWorks3D request ${r.id}: ${statusLabel(r.status)}.`);
+      lines.push(r.status === "shipped"
+        ? `Good news — your MangoWorks3D order ${r.id} has shipped!`
+        : `Update on your MangoWorks3D request ${r.id}: ${statusLabel(r.status)}.`);
+      if (r.status === "shipped" && r.shipment) {
+        lines.push("", `Carrier: ${r.shipment.carrier}${r.shipment.tracking ? `\nTracking number: ${r.shipment.tracking}` : ""}`);
+        if (trackingUrl(r.shipment)) lines.push(`Track your package: ${trackingUrl(r.shipment)}`);
+      }
     }
     if (r.customerMessage) lines.push("", r.customerMessage);
     if (r.status === "quoted" && q) {

@@ -406,17 +406,17 @@
   const statusLabel = (id) => (STATUSES.find(s => s.id === id) || {}).label || id;
   const badge = (s) => `<span class="status-badge st-${esc(s)}">${esc(statusLabel(s))}</span>`;
   const statusOptions = (cur) => STATUSES.map(s => `<option value="${s.id}"${s.id === cur ? ' selected' : ''}>${esc(s.label)}</option>`).join('');
-  const CLOSED = ['completed', 'cancelled'];
+  const CLOSED = ['shipped', 'cancelled'];
   const money = (c) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   const payPill = (r) => r.paid ? `<span class="paid-pill">PAID</span>`
-    : (['quoted', 'approved', 'printing', 'ready', 'shipped'].includes(r.status) && r.price ? `<span class="unpaid-pill">UNPAID</span>` : '');
+    : (['quoted', 'approved', 'printing', 'shipped'].includes(r.status) && r.price ? `<span class="unpaid-pill">UNPAID</span>` : '');
 
   async function loadRequests() {
     try {
       const d = await api('/admin/requests');
       REQUESTS = d.items; STATUSES = d.statuses;
       const f = $('f-status'), cur = f.value || 'active';
-      f.innerHTML = `<option value="active">Open (not completed/cancelled)</option><option value="all">All</option>` +
+      f.innerHTML = `<option value="active">Open (not shipped/cancelled)</option><option value="all">All</option>` +
         STATUSES.map(s => `<option value="${s.id}">${esc(s.label)} (${REQUESTS.filter(r => r.status === s.id).length})</option>`).join('');
       f.value = cur;
       const n = REQUESTS.filter(r => r.status === 'new').length;
@@ -449,6 +449,14 @@
 
   async function quickStatus(id, sel) {
     const r = REQUESTS.find(x => x.id === id);
+    if (sel.value === 'shipped') {
+      // Shipping needs a carrier and tracking number: finish it in the order panel.
+      sel.value = r.status;
+      openRequest(id);
+      $('d-status').value = 'shipped';
+      $('d-status').dispatchEvent(new Event('change'));
+      return;
+    }
     const notify = confirm(`Status → ${statusLabel(sel.value)}.\n\nEmail ${r.name} about this update?\n(OK = save and email, Cancel = save without emailing)`);
     await updateRequest(id, { status: sel.value, notify });
   }
@@ -494,6 +502,10 @@
       </div>
       <div class="card" style="display:flex;flex-direction:column;gap:0.9rem;">
         <div><label>Status</label><select id="d-status">${statusOptions(r.status)}</select></div>
+        <div id="d-ship" class="grid2" style="display:${r.status === 'shipped' ? '' : 'none'};">
+          <div><label>Carrier</label><select id="d-carrier">${['USPS', 'UPS', 'FedEx', 'Other'].map(c => `<option${(r.shipment ? r.shipment.carrier : 'USPS') === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
+          <div><label>Tracking #</label><input type="text" id="d-tracking" value="${esc(r.shipment ? r.shipment.tracking : '')}" placeholder="e.g. 9400 1000 0000 0000 0000 00"/></div>
+        </div>
         <div>
           <div class="row" style="margin-bottom:0.35rem;"><label style="margin:0;" class="grow">Quote</label>
             <a class="btn-ghost" style="padding:0.35rem 0.8rem;font-size:0.8rem;" target="_blank" href="/invoice/?id=${encodeURIComponent(r.id)}${r.viewToken ? '&t=' + encodeURIComponent(r.viewToken) : ''}">Open ${r.paid ? 'invoice' : 'quote'} ↗</a></div>
@@ -515,7 +527,11 @@
         <div class="row"><button class="btn" onclick="saveRequest()">Save</button><span class="grow"></span><button class="btn-ghost btn-danger" onclick="deleteRequest()">Delete</button></div>
       </div>
       <div><label>History</label><div class="history">${(r.history || []).slice().reverse().map(h => `${fmtDate(h.at)} — ${esc(statusLabel(h.status))} <span>(${esc(h.by)})</span>`).join('<br/>')}</div></div>`;
-    $('d-status').addEventListener('change', () => { $('d-notify').checked = $('d-status').value !== r.status; });
+    $('d-status').addEventListener('change', () => {
+      $('d-notify').checked = $('d-status').value !== r.status;
+      $('d-ship').style.display = $('d-status').value === 'shipped' ? '' : 'none';
+      if ($('d-status').value === 'shipped') $('d-tracking').focus();
+    });
     QLINES = startingLines(r);
     $('q-ship').value = r.quote ? centsToInput(r.quote.shipping) : '';
     renderQuoteLines();
@@ -618,7 +634,12 @@
     let quote;
     try { quote = quotePayload(); } catch (e) { toast(e.message); return; }
     if ($('d-status').value === 'quoted' && !quote.lines.some(l => l.unit > 0)) { toast('Add at least one priced line before sending the quote.'); return; }
-    await updateRequest(id, { status: $('d-status').value, quote, customerMessage: $('d-msg').value, adminNote: $('d-note').value, notify: $('d-notify').checked });
+    const shipped = $('d-status').value === 'shipped';
+    if (shipped && !$('d-tracking').value.trim() && !confirm('Mark as shipped without a tracking number?')) return;
+    await updateRequest(id, {
+      status: $('d-status').value, quote, customerMessage: $('d-msg').value, adminNote: $('d-note').value, notify: $('d-notify').checked,
+      ...(shipped ? { shipment: { carrier: $('d-carrier').value, tracking: $('d-tracking').value } } : {}),
+    });
   }
 
   async function deleteRequest() {

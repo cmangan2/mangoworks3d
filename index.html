@@ -470,6 +470,8 @@
     background: rgba(255,140,0,0.08); border: 1px solid rgba(255,140,0,0.25);
   }
   .req-quote .price { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--mango); letter-spacing: 1px; }
+  .ship-line { margin: 0.25rem 0 0.5rem; color: var(--teal); font-weight: 800; font-size: 0.92rem; overflow-wrap: anywhere; }
+  .ship-line a { color: var(--mango); }
   .paid-line { margin-top: 0.75rem; color: var(--teal); font-weight: 800; }
   .pay-note { margin-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); }
   .req-files a { color: var(--teal); font-size: 0.85rem; margin-right: 1rem; }
@@ -1645,6 +1647,7 @@
             <div><span class="req-ref">${esc(r.id)}</span> · <span class="req-date">${r.kind === 'order' ? 'Shop order' : 'Quote request'} · ${fmtDate(r.created)}</span></div>
             <span class="status-badge st-${esc(r.status)}">${esc(statusLabel(r.status))}</span>
           </div>
+          ${r.status === 'shipped' && r.shipment ? `<div class="ship-line">📦 Shipped via ${esc(r.shipment.carrier)}${r.shipment.tracking ? ' · ' + esc(r.shipment.tracking) : ''}${r.shipment.url ? ` · <a href="${esc(r.shipment.url)}" target="_blank" rel="noopener">Track package →</a>` : ''}</div>` : ''}
           ${r.items && r.items.length ? `<div class="order-items" style="margin:0.5rem 0 0;">${r.items.map(i => `<div class="order-item">
             <div class="order-thumb" style="width:48px;height:48px;font-size:1.3rem;">${i.image ? `<img src="${esc(i.image)}" alt=""/>` : '🖨️'}</div>
             <div class="order-info"><div class="order-name">${esc(i.name)} × ${i.qty}</div><div class="order-meta">${esc(i.material)} · ${esc(i.color)}</div></div>

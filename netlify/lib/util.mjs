@@ -73,9 +73,26 @@ export const STATUSES = [
   { id: "quoted", label: "Quote sent" },
   { id: "approved", label: "Approved" },
   { id: "printing", label: "Printing" },
-  { id: "ready", label: "Ready to ship" },
   { id: "shipped", label: "Shipped" },
-  { id: "completed", label: "Completed" },
   { id: "cancelled", label: "Cancelled" },
 ];
 export const statusLabel = (id) => STATUSES.find((s) => s.id === id)?.label || id;
+
+// Statuses that were retired: Shipped is the final step now.
+const RETIRED = { ready: "printing", completed: "shipped" };
+export function normalizeStatus(r) {
+  if (r && RETIRED[r.status]) r.status = RETIRED[r.status];
+  return r;
+}
+
+// Carrier tracking pages.
+const TRACKING = {
+  USPS: (n) => `https://tools.usps.com/go/TrackConfirmAction?tLabels=${n}`,
+  UPS: (n) => `https://www.ups.com/track?tracknum=${n}`,
+  FedEx: (n) => `https://www.fedex.com/fedextrack/?trknbr=${n}`,
+};
+export const CARRIERS = [...Object.keys(TRACKING), "Other"];
+export function trackingUrl(s) {
+  const f = s && TRACKING[s.carrier];
+  return f && s.tracking ? f(encodeURIComponent(s.tracking)) : "";
+}

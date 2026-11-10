@@ -167,6 +167,7 @@
           </div>
         </div>` : `<p class="pending">We're preparing your quote — you'll get an email as soon as it's ready.</p>`}
         ${inv.customerMessage ? `<div class="note">${esc(inv.customerMessage)}</div>` : ''}
+        ${inv.shipment ? `<p class="paidline" style="color:var(--ink);">📦 Shipped via ${esc(inv.shipment.carrier)}${inv.shipment.tracking ? ' · ' + esc(inv.shipment.tracking) : ''}${inv.shipment.url ? ` · <a href="${esc(inv.shipment.url)}" target="_blank" rel="noopener" style="color:var(--mango);">Track package →</a>` : ''}</p>` : ''}
         ${inv.paid ? `<p class="paidline">✓ Paid ${money(inv.paid.amount)}${inv.paid.method === 'card' ? ' by card' : ' (' + esc(inv.paid.method) + ')'} on ${fmtDate(inv.paid.at)}. Thank you!</p>` : ''}
         <div class="foot">
           <span>Thank you for supporting MangoWorks3D!</span>
