@@ -223,6 +223,8 @@
       <select id="f-status"></select>
       <input type="search" id="f-search" placeholder="Search name, email, reference, text…"/>
       <button class="btn-ghost" onclick="loadRequests()">↻ Refresh</button>
+      <button class="btn-ghost" onclick="exportCsv()" title="Every order as a spreadsheet">⬇ Export CSV</button>
+      <button class="btn-ghost" id="pdf-all-btn" onclick="downloadAllPdfs(this)" title="A ZIP with a PDF invoice for every quoted or paid order">⬇ All invoices (PDF)</button>
     </div>
     <div id="req-list"><p class="muted">Loading…</p></div>
   </section>
@@ -508,6 +510,7 @@
         </div>
         <div>
           <div class="row" style="margin-bottom:0.35rem;"><label style="margin:0;" class="grow">Quote</label>
+            <button class="btn-ghost" style="padding:0.35rem 0.8rem;font-size:0.8rem;" onclick="downloadOnePdf('${esc(r.id)}', this)">Download PDF</button>
             <a class="btn-ghost" style="padding:0.35rem 0.8rem;font-size:0.8rem;" target="_blank" href="/invoice/?id=${encodeURIComponent(r.id)}${r.viewToken ? '&t=' + encodeURIComponent(r.viewToken) : ''}">Open ${r.paid ? 'invoice' : 'quote'} ↗</a></div>
           <div id="q-lines"></div>
           <button class="btn-ghost" style="margin-top:0.5rem;padding:0.4rem 0.9rem;font-size:0.82rem;" onclick="addQuoteLine()">+ Add line</button>
@@ -655,6 +658,190 @@
     if (/^#MW-/.test(location.hash)) history.replaceState(null, '', location.pathname);
   }
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawers(); });
+
+  // ── Exports: CSV of all orders, PDF invoices ──
+  function saveBlob(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  }
+  const today = () => new Date().toISOString().slice(0, 10);
+  const dollars = (c) => c == null ? '' : (c / 100).toFixed(2);
+
+  // Same fallback as the server: a quote's lines, or an old free-text price as one line.
+  function quoteFor(r) {
+    if (r.quote && r.quote.lines && r.quote.lines.length) return r.quote;
+    const c = toCents(r.price);
+    if (!c) return null;
+    const desc = r.items && r.items.length ? r.items.map(i => `${i.name} × ${i.qty}`).join(', ') : '3D printing';
+    return { lines: [{ desc, qty: 1, unit: c }], shipping: 0, subtotal: c, total: c };
+  }
+
+  function exportCsv() {
+    const cols = ['Number', 'Created', 'Type', 'Status', 'Name', 'Email', 'Phone',
+      'Ship street', 'Ship street 2', 'Ship city', 'Ship state', 'Ship ZIP', 'Ship country',
+      'Items', 'Subtotal', 'Shipping', 'Total', 'Paid', 'Paid amount', 'Paid on', 'Paid how',
+      'Carrier', 'Tracking', 'Message to customer', 'Customer notes', 'Private note'];
+    const rows = REQUESTS.map(r => {
+      const q = quoteFor(r), s = r.shipTo || {};
+      const items = (r.items || []).map(i => `${i.name} (${i.material}, ${i.color}) x${i.qty}`).join('; ');
+      return [r.id, r.created.slice(0, 10), r.kind === 'order' ? 'Shop order' : 'Quote request', statusLabel(r.status),
+        r.name, r.email, r.phone, s.line1, s.line2, s.city, s.state, s.zip, s.country,
+        items, q && dollars(q.subtotal), q && dollars(q.shipping), q && dollars(q.total),
+        r.paid ? 'Yes' : 'No', r.paid && dollars(r.paid.amount), r.paid && r.paid.at.slice(0, 10), r.paid && r.paid.method,
+        r.shipment && r.shipment.carrier, r.shipment && r.shipment.tracking, r.customerMessage, r.message, r.adminNote];
+    });
+    // Quote every cell; neutralise spreadsheet formulas in customer-typed text.
+    const cell = (v) => {
+      let s = v == null || v === false ? '' : String(v);
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+    const csv = [cols, ...rows].map(r => r.map(cell).join(',')).join('\r\n');
+    saveBlob(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }), `mangoworks3d-orders-${today()}.csv`);
+    toast(`Exported ${REQUESTS.length} order${REQUESTS.length === 1 ? '' : 's'}.`);
+  }
+
+  // jsPDF and JSZip load only when a PDF is first needed.
+  const loadScript = (src) => new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src; s.onload = res;
+    s.onerror = () => rej(new Error('Couldn\'t load the PDF tools. Check your connection and try again.'));
+    document.head.appendChild(s);
+  });
+  let pdfTools = null;
+  function loadPdfTools() {
+    pdfTools ||= Promise.all([
+      loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+      loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'),
+      fetch('/images/logo.png').then(r => r.blob()).then(b => new Promise(res => {
+        const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b);
+      })),
+    ]).then(([, , logo]) => ({ logo })).catch(e => { pdfTools = null; throw e; });
+    return pdfTools;
+  }
+
+  // The PDF's built-in font covers Latin text only: swap the odd symbols, drop emoji.
+  const pdfText = (s) => String(s ?? '').replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[—–•]/g, '-')
+    .replace(/…/g, '...').replace(/×/g, 'x').replace(/[^\x20-\x7E\xA0-\xFF\n]/g, '');
+
+  function invoicePdf(r, logo) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    const W = doc.internal.pageSize.getWidth(), M = 48, R = W - M;
+    const q = quoteFor(r), paid = !!r.paid;
+    const ink = [26, 26, 26], muted = [107, 107, 107], mango = [255, 140, 0], teal = [0, 168, 139];
+    doc.setFillColor(...mango); doc.rect(0, 0, W, 8, 'F');
+    doc.addImage(logo, 'PNG', M, 34, 54, 54);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
+    doc.setTextColor(...mango); doc.text('MANGO', M + 64, 60);
+    let x = M + 64 + doc.getTextWidth('MANGO');
+    doc.setTextColor(...ink); doc.text('WORKS', x, 60); x += doc.getTextWidth('WORKS');
+    doc.setTextColor(...mango); doc.text('3D', x, 60);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...muted);
+    doc.text('Custom 3D printing', M + 64, 74); doc.text('mangoworks3D@gmail.com · mangoworks3d.com', M + 64, 86);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(...ink);
+    doc.text(paid ? 'INVOICE' : 'QUOTE', R, 62, { align: 'right' });
+    doc.setFontSize(9);
+    const meta = [['Number', r.id], ['Date', fmtLong((r.quote && r.quote.updated) || r.created)], ['Status', paid ? 'Paid' : statusLabel(r.status)]];
+    meta.forEach(([k, v], i) => {
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(...muted); doc.text(k, R - 110, 80 + i * 13, { align: 'right' });
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(...ink); doc.text(pdfText(v), R, 80 + i * 13, { align: 'right' });
+    });
+
+    let y = 140;
+    const block = (label, lines, bx) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...mango); doc.text(label, bx, y);
+      doc.setFontSize(10); doc.setTextColor(...ink);
+      lines.forEach((l, i) => { doc.setFont('helvetica', i === 0 ? 'bold' : 'normal'); doc.text(pdfText(l), bx, y + 16 + i * 13); });
+      return lines.length;
+    };
+    const s = r.shipTo;
+    const n = Math.max(
+      block('BILL TO', [r.name, r.email, r.phone].filter(Boolean), M),
+      block('SHIP TO', s ? [r.name, s.line1, s.line2, `${s.city}, ${s.state} ${s.zip}`, s.country !== 'United States' ? s.country : ''].filter(Boolean) : ['—'], W / 2 + 10));
+    y += 16 + n * 13 + 24;
+
+    // Line items
+    const cQty = R - 170, cUnit = R - 85;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.text('DESCRIPTION', M + 4, y); doc.text('QTY', cQty, y, { align: 'right' });
+    doc.text('UNIT PRICE', cUnit, y, { align: 'right' }); doc.text('AMOUNT', R - 4, y, { align: 'right' });
+    y += 6; doc.setDrawColor(...ink); doc.setLineWidth(1.5); doc.line(M, y, R, y); y += 16;
+    doc.setFontSize(10); doc.setTextColor(...ink); doc.setLineWidth(0.5); doc.setDrawColor(230, 227, 220);
+    const lines = q ? q.lines.map(l => [l.desc, l.qty, money(l.unit), money(l.qty * l.unit)])
+      : (r.items || []).map(i => [`${i.name} - ${i.material}, ${i.color}`, i.qty, '-', '-']);
+    for (const [d, qty, unit, amt] of lines) {
+      if (y > 680) { doc.addPage(); y = 60; }
+      doc.setFont('helvetica', 'normal');
+      const wrapped = doc.splitTextToSize(pdfText(d), cQty - M - 50);
+      doc.text(wrapped, M + 4, y);
+      doc.text(String(qty), cQty, y, { align: 'right' }); doc.text(unit, cUnit, y, { align: 'right' }); doc.text(amt, R - 4, y, { align: 'right' });
+      y += wrapped.length * 12 + 8; doc.line(M, y - 4, R, y - 4); y += 10;
+    }
+    if (q) {
+      const tx = R - 200;
+      const trow = (k, v, big) => {
+        doc.setFont('helvetica', big ? 'bold' : 'normal'); doc.setFontSize(big ? 13 : 10);
+        doc.setTextColor(...ink); doc.text(k, tx, y);
+        if (big) doc.setTextColor(...mango);
+        doc.text(v, R - 4, y, { align: 'right' }); y += big ? 20 : 16;
+      };
+      y += 4; trow('Subtotal', money(q.subtotal)); trow('Shipping', q.shipping ? money(q.shipping) : 'Free');
+      doc.setDrawColor(...ink); doc.setLineWidth(1.5); doc.line(tx - 8, y - 8, R, y - 8); y += 8;
+      trow('Total', money(q.total), true);
+      if (paid) {
+        doc.setDrawColor(...teal); doc.setTextColor(...teal); doc.setLineWidth(2.5);
+        doc.roundedRect(M + 30, y - 66, 110, 40, 6, 6);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(24); doc.text('PAID', M + 85, y - 38, { align: 'center' });
+      }
+    } else {
+      doc.setFont('helvetica', 'italic'); doc.setTextColor(...muted); doc.text('Quote not priced yet.', M, y + 6); y += 20;
+    }
+    y += 10;
+    const para = (text, color, bold) => {
+      if (!text) return;
+      doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(10); doc.setTextColor(...color);
+      const t = doc.splitTextToSize(pdfText(text), R - M);
+      if (y + t.length * 13 > 740) { doc.addPage(); y = 60; }
+      doc.text(t, M, y); y += t.length * 13 + 10;
+    };
+    para(r.customerMessage, ink);
+    if (paid) para(`Paid ${money(r.paid.amount)}${r.paid.method === 'card' ? ' by card' : ' (' + r.paid.method + ')'} on ${fmtLong(r.paid.at)}. Thank you!`, teal, true);
+    if (r.status === 'shipped' && r.shipment) para(`Shipped via ${r.shipment.carrier}${r.shipment.tracking ? ' — tracking ' + r.shipment.tracking : ''}`, ink, true);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.setDrawColor(230, 227, 220); doc.setLineWidth(0.5); doc.line(M, 752, R, 752);
+    doc.text('Thank you for supporting MangoWorks3D!', M, 766); doc.text('Questions? mangoworks3D@gmail.com', R, 766, { align: 'right' });
+    return doc;
+  }
+  const fmtLong = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  async function downloadOnePdf(id, btn) {
+    const r = REQUESTS.find(x => x.id === id), label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Making PDF…';
+    try { const { logo } = await loadPdfTools(); saveBlob(invoicePdf(r, logo).output('blob'), `${r.id}.pdf`); }
+    catch (e) { toast(e.message); }
+    btn.disabled = false; btn.textContent = label;
+  }
+
+  async function downloadAllPdfs(btn) {
+    const list = REQUESTS.filter(r => quoteFor(r));
+    if (!list.length) { toast('No quoted or paid orders yet.'); return; }
+    const label = btn.textContent; btn.disabled = true;
+    try {
+      const { logo } = await loadPdfTools();
+      const zip = new JSZip();
+      list.forEach((r, i) => {
+        btn.textContent = `Making PDFs… ${i + 1}/${list.length}`;
+        const folder = r.paid ? 'paid' : 'quotes';
+        zip.file(`${folder}/${r.created.slice(0, 10)} ${r.id} ${pdfText(r.name).replace(/[\\/:*?"<>|]/g, '').trim()}.pdf`, invoicePdf(r, logo).output('arraybuffer'));
+      });
+      btn.textContent = 'Zipping…';
+      saveBlob(await zip.generateAsync({ type: 'blob' }), `mangoworks3d-invoices-${today()}.zip`);
+      toast(`Downloaded ${list.length} invoice${list.length === 1 ? '' : 's'}.`);
+    } catch (e) { toast(e.message); }
+    btn.disabled = false; btn.textContent = label;
+  }
 
   // ── Site data ──
   async function loadSite() {
