@@ -710,9 +710,13 @@
         <p class="mat-pop-note stock-note-text">These materials and colors are in stock. For custom jobs we can order any Bambu Lab filament (preferred) or other brands — just tell us what you need.</p>
       </div>
     </div>
-    <div>
+    <div class="stat-materials" tabindex="0" aria-describedby="printer-pop">
       <div class="stat-num">P1S</div>
       <div class="stat-label">Bambu Labs Printer</div>
+      <div class="mat-pop" id="printer-pop" role="tooltip">
+        <div class="mat-pop-title">Build Volume</div>
+        <p class="build-note-text" style="font-size:0.9rem;line-height:1.55;white-space:normal;">Build volume is about 10″ × 10″ × 10″ (256 mm). Need something bigger? We can print larger parts by splitting them into pieces with connecting features.</p>
+      </div>
     </div>
   </div>
 
@@ -845,6 +849,7 @@
             <input type="file" id="fileInput" style="display:none" accept=".step,.stp,.stl,.3mf,.obj,.png,.jpg,.jpeg"/>
           </div>
           <p id="file-chosen" style="font-size:0.85rem; color:var(--teal); margin-top:6px; display:none;"></p>
+          <p class="stock-note build-note-text">Build volume is about 10″ × 10″ × 10″ (256 mm). Need something bigger? We can print larger parts by splitting them into pieces with connecting features.</p>
         </div>
         <div class="form-full">
           <label>Material</label>
@@ -1098,6 +1103,14 @@
         el.textContent = SETTINGS.stockNote;
         el.style.display = SETTINGS.stockNote ? '' : 'none';
       });
+    }
+    if (SETTINGS.buildNote !== undefined) {
+      document.querySelectorAll('.build-note-text').forEach(el => {
+        el.textContent = SETTINGS.buildNote;
+        el.style.display = SETTINGS.buildNote ? '' : 'none';
+      });
+      // The printer popup has nothing else in it.
+      document.getElementById('printer-pop').style.display = SETTINGS.buildNote ? '' : 'none';
     }
     const badge = document.getElementById('hero-badge');
     if (SETTINGS.heroBadge !== undefined) {
