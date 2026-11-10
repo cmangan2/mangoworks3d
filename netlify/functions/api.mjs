@@ -167,8 +167,11 @@ route("POST", "/requests", async ({ req, url }) => {
   let items = [];
   try { items = JSON.parse(form.get("items") || "[]"); } catch {}
   items = (Array.isArray(items) ? items : []).slice(0, 50).map((i) => ({
-    name: clean(i?.name, 120), material: clean(i?.material, 60), color: clean(i?.color, 60),
+    name: clean(i?.name, 120), material: clean(i?.material, 60), color: clean(i?.color, 120),
     qty: Math.max(1, Math.min(999, parseInt(i?.qty, 10) || 1)), productId: clean(i?.productId, 40),
+    price: clean(i?.price, 40),
+    // Only our own product photos (shown as thumbnails in the account and admin pages).
+    image: /^\/api\/img\/[\w-]+$/.test(i?.image || "") ? i.image : "",
   })).filter((i) => i.name);
   if (!message && !items.length) throw new HttpError(400, "Please describe your project.");
 

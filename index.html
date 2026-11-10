@@ -495,6 +495,32 @@
   .product-thumbs img.active { border-color: var(--mango); opacity: 1; }
   .hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
+  /* ── SHOP ORDER SUMMARY (request page) ── */
+  .order-items { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
+  .order-item {
+    display: flex; gap: 0.9rem; align-items: center;
+    background: var(--bg3); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 0.75rem;
+  }
+  .order-thumb {
+    width: 64px; height: 64px; border-radius: 10px; overflow: hidden; flex-shrink: 0;
+    background: var(--bg2); display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
+  }
+  .order-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .order-info { flex: 1; min-width: 0; }
+  .order-name { font-weight: 800; }
+  .order-meta { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; line-height: 1.5; }
+  .order-meta .special { color: var(--mango); font-weight: 700; }
+  .order-qty { display: flex; align-items: center; gap: 6px; margin-top: 0.4rem; }
+  .order-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
+  .order-price { font-weight: 900; color: var(--mango); white-space: nowrap; }
+  .order-total {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+    padding: 0.75rem 0.25rem; border-top: 1px solid rgba(255,255,255,0.08); margin-bottom: 0.25rem;
+  }
+  .order-total strong { font-size: 1.15rem; color: var(--mango); }
+  .order-links { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; font-size: 0.85rem; }
+  .special-input { margin-top: 0; }
+
   /* ── FOOTER ── */
   footer {
     background: var(--bg2);
@@ -806,11 +832,11 @@
 <div id="page-request" class="page">
 
   <div class="request-hero">
-    <div class="section-label">Custom Orders</div>
-    <h1 style="font-family:'Bebas Neue',sans-serif; font-size:clamp(3rem,7vw,5.5rem); line-height:1; letter-spacing:2px; margin-bottom:1rem;">
+    <div class="section-label" id="req-hero-label">Custom Orders</div>
+    <h1 id="req-hero-title" style="font-family:'Bebas Neue',sans-serif; font-size:clamp(3rem,7vw,5.5rem); line-height:1; letter-spacing:2px; margin-bottom:1rem;">
       LET'S BUILD <span style="color:var(--mango)">SOMETHING</span> GREAT
     </h1>
-    <p style="color:var(--text-muted); font-size:1.05rem; line-height:1.7;">
+    <p id="req-hero-sub" style="color:var(--text-muted); font-size:1.05rem; line-height:1.7;">
       Fill out the form below with as much detail as you can — the more we know, the faster we can get you a quote and get printing.
     </p>
   </div>
@@ -818,7 +844,8 @@
   <div class="form-section" style="display:flex; gap:3rem; align-items:flex-start; flex-wrap:wrap;">
 
     <div class="form-card" style="flex:1; min-width:300px;">
-      <h2 style="font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:1px; margin-bottom:1.75rem;">Your Project Details</h2>
+      <h2 id="form-title" style="font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:1px; margin-bottom:1.75rem;">Your Project Details</h2>
+      <div id="order-summary" style="display:none"></div>
 
       <div class="hp-field" aria-hidden="true"><label>Website</label><input type="text" id="website" tabindex="-1" autocomplete="off"/></div>
       <div class="form-grid">
@@ -834,7 +861,7 @@
           <label>Phone (optional)</label>
           <input type="tel" id="phone" placeholder="(603) 555-0100"/>
         </div>
-        <div>
+        <div class="quote-only">
           <label>Service Type</label>
           <select id="service">
             <option value="">Choose a service…</option>
@@ -842,7 +869,7 @@
             <option>Custom design collaboration</option>
           </select>
         </div>
-        <div class="form-full">
+        <div class="form-full quote-only">
           <label>Upload Your File (optional)</label>
           <div class="file-drop" onclick="document.getElementById('fileInput').click()">
             <div class="drop-icon">📎</div>
@@ -853,7 +880,7 @@
           <p id="file-chosen" style="font-size:0.85rem; color:var(--teal); margin-top:6px; display:none;"></p>
           <p class="stock-note build-note-text">Build volume is about 10″ × 10″ × 10″ (256 mm). Need something bigger? We can print larger parts by splitting them into pieces with connecting features.</p>
         </div>
-        <div class="form-full">
+        <div class="form-full quote-only">
           <label>Material</label>
           <div class="materials-grid" id="materials">
             <div class="material-chip" onclick="selectMaterial(this)">PLA</div>
@@ -867,7 +894,7 @@
           </div>
           <p class="stock-note stock-note-text">These materials and colors are in stock. For custom jobs we can order any Bambu Lab filament (preferred) or other brands — just tell us what you need.</p>
         </div>
-        <div class="form-full">
+        <div class="form-full quote-only">
           <label>Color Preference</label>
           <div class="color-swatches">
             <div class="swatch" style="background:#F5F5F0" onclick="selectColor(this)" title="White"></div>
@@ -884,7 +911,7 @@
           <input type="text" id="color-text" placeholder="Or describe a color / multi-color idea…" style="margin-top:0.75rem;"/>
         </div>
         <div class="form-full">
-          <label>Project Description</label>
+          <label id="desc-label">Project Description</label>
           <textarea id="description" placeholder="Tell me about your project — dimensions, use case, any special requirements, quantity needed, timeline…"></textarea>
         </div>
 
@@ -1150,9 +1177,19 @@
     return mat ? mat.colors : COLORS;
   }
 
+  const SPECIAL = '__special';
+
   function updateColorSelect(matSelectId, colSelectId) {
     const matVal = document.getElementById(matSelectId).value;
     const colSel = document.getElementById(colSelectId);
+    // Special order: no stock colors, ask which filament instead.
+    const specialInput = document.getElementById(colSelectId + '-special');
+    const special = matVal === SPECIAL;
+    colSel.style.display = special ? 'none' : '';
+    if (specialInput) {
+      specialInput.style.display = special ? '' : 'none';
+      if (special) { specialInput.focus(); return; }
+    }
     const colors = matVal ? getColorsForMaterial(matVal) : COLORS;
     const prev = colSel.value;
     colSel.innerHTML = '<option value="" disabled selected>Choose color…</option>' +
@@ -1180,6 +1217,7 @@
         : '';
 
       const materialOptions = MATERIALS.map(m => `<option>${esc(m)}</option>`).join('');
+      const specialOption = `<option value="${SPECIAL}">Special order (other filament)…</option>`;
 
       card.innerHTML = `
         <div class="product-thumb">${thumbContent}</div>
@@ -1189,8 +1227,9 @@
           ${product.price ? `<div class="product-price">${esc(product.price)}</div>` : ''}
           <div class="product-desc">${esc(product.desc)}</div>
           <div class="product-options">
-            <select id="mat-${pid}" onchange="updateColorSelect('mat-${pid}','col-${pid}')"><option value="" disabled selected>Choose material…</option>${materialOptions}</select>
+            <select id="mat-${pid}" onchange="updateColorSelect('mat-${pid}','col-${pid}')"><option value="" disabled selected>Choose material…</option>${materialOptions}${specialOption}</select>
             <select id="col-${pid}"><option value="" disabled selected>Choose color…</option></select>
+            <input type="text" id="col-${pid}-special" class="special-input" style="display:none" placeholder="Which filament & color? e.g. Bambu PLA Matte, Ash Gray"/>
             <div class="qty-row">
               <button class="qty-btn" onclick="changeQty('${pid}',-1)">−</button>
               <span class="qty-num" id="qty-${pid}">1</span>
@@ -1217,11 +1256,12 @@
       </div>
       <p id="shop-file-chosen" style="font-size:0.85rem;color:var(--teal);display:none;"></p>
       <select id="upload-mat" onchange="updateColorSelect('upload-mat','upload-col')" style="background:var(--bg3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.85rem;padding:0.5rem 0.75rem;outline:none;cursor:pointer;">
-        <option value="" disabled selected>Choose material…</option>${materialOptions}
+        <option value="" disabled selected>Choose material…</option>${materialOptions}<option value="${SPECIAL}">Special order (other filament)…</option>
       </select>
       <select id="upload-col" style="background:var(--bg3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.85rem;padding:0.5rem 0.75rem;outline:none;cursor:pointer;">
         <option value="" disabled selected>Choose color…</option>
       </select>
+      <input type="text" id="upload-col-special" style="display:none;font-size:0.85rem;padding:0.5rem 0.75rem;" placeholder="Which filament & color? e.g. Bambu PLA Matte, Ash Gray"/>
       <div class="qty-row">
         <button class="qty-btn" onclick="changeQty('upload',-1)">−</button>
         <span class="qty-num" id="qty-upload">1</span>
@@ -1285,27 +1325,37 @@
     el.parentElement.querySelectorAll('img').forEach(i => i.classList.toggle('active', i === el));
   }
 
+  // Material + color from a shop card; a special order takes its color from the text box.
+  function readChoice(matId, colId) {
+    const mat = document.getElementById(matId).value;
+    if (!mat) { alert('Please choose a material.'); return null; }
+    if (mat === SPECIAL) {
+      const want = document.getElementById(colId + '-special').value.trim();
+      if (!want) { alert('Tell us which filament and color you would like.'); return null; }
+      return { material: 'Special order', color: want, special: true };
+    }
+    const col = document.getElementById(colId).value;
+    if (!col) { alert('Please choose a color.'); return null; }
+    return { material: mat, color: col };
+  }
+
   function addToCart(id) {
     const product = CATALOG.find(p => String(p.id) === String(id));
-    const mat = document.getElementById('mat-' + id).value;
-    const col = document.getElementById('col-' + id).value;
+    const choice = readChoice('mat-' + id, 'col-' + id);
+    if (!choice) return;
     const qty = qtys[id] || 1;
-    if (!mat) { alert('Please choose a material.'); return; }
-    if (!col) { alert('Please choose a color.'); return; }
-    cart.push({ type: 'design', productId: product.id, name: product.name, emoji: product.emoji || '🖨️', image: productImages(product)[0] || '', material: mat, color: col, qty });
+    cart.push({ type: 'design', productId: product.id, name: product.name, emoji: product.emoji || '🖨️', image: productImages(product)[0] || '', price: product.price || '', ...choice, qty });
     updateCart();
     toggleCart();
   }
 
   function addUploadToCart() {
     const fileInput = document.getElementById('shopFileInput');
-    const mat = document.getElementById('upload-mat').value;
-    const col = document.getElementById('upload-col').value;
     const qty = qtys['upload'] || 1;
     if (!fileInput.files[0]) { alert('Please upload a file first.'); return; }
-    if (!mat) { alert('Please choose a material.'); return; }
-    if (!col) { alert('Please choose a color.'); return; }
-    cart.push({ type: 'upload', name: fileInput.files[0].name, file: fileInput.files[0], emoji: '📁', image: '', material: mat, color: col, qty });
+    const choice = readChoice('upload-mat', 'upload-col');
+    if (!choice) return;
+    cart.push({ type: 'upload', name: fileInput.files[0].name, file: fileInput.files[0], emoji: '📁', image: '', price: '', ...choice, qty });
     updateCart();
     toggleCart();
   }
@@ -1313,7 +1363,73 @@
   function removeFromCart(index) {
     cart.splice(index, 1);
     updateCart();
-    if (cart.length === 0) document.getElementById('cart-drawer').classList.remove('open');
+    if (cart.length === 0) {
+      document.getElementById('cart-drawer').classList.remove('open');
+      document.getElementById('cart-overlay').classList.remove('open');
+    }
+    if (currentPage === 'request') setRequestMode();
+  }
+
+  function changeCartQty(index, delta) {
+    cart[index].qty = Math.max(1, Math.min(999, cart[index].qty + delta));
+    updateCart();
+    setRequestMode();
+  }
+
+  // The request page doubles as the order review page while the cart has items.
+  function setRequestMode() {
+    const order = cart.length > 0;
+    document.querySelectorAll('#page-request .quote-only').forEach(el => el.style.display = order ? 'none' : '');
+    document.getElementById('req-hero-label').textContent = order ? 'Shop Order' : 'Custom Orders';
+    document.getElementById('req-hero-title').innerHTML = order
+      ? 'REVIEW YOUR <span style="color:var(--mango)">ORDER</span>'
+      : 'LET\'S BUILD <span style="color:var(--mango)">SOMETHING</span> GREAT';
+    document.getElementById('req-hero-sub').textContent = order
+      ? 'Check your items, add any notes, and send it over. We\'ll confirm the final price and timing within 24–48 hours — nothing is charged until you approve.'
+      : 'Fill out the form below with as much detail as you can — the more we know, the faster we can get you a quote and get printing.';
+    document.getElementById('form-title').textContent = order ? 'Your Order' : 'Your Project Details';
+    document.getElementById('desc-label').textContent = order ? 'Notes (optional)' : 'Project Description';
+    document.getElementById('description').placeholder = order
+      ? 'Anything we should know? Deadline, gift, special instructions…'
+      : 'Tell me about your project — dimensions, use case, any special requirements, quantity needed, timeline…';
+    document.querySelector('.form-submit .btn-primary').textContent = order ? 'Send My Order →' : 'Send My Request →';
+    renderOrderSummary();
+  }
+
+  function renderOrderSummary() {
+    const box = document.getElementById('order-summary');
+    if (!cart.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    let total = 0, allPriced = true;
+    const rows = cart.map((item, i) => {
+      const each = amountCents(item.price);
+      if (each) total += each * item.qty; else allPriced = false;
+      const meta = item.special
+        ? `<span class="special">Special order:</span> ${esc(item.color)}`
+        : `${esc(item.material)} · ${esc(item.color)}`;
+      return `<div class="order-item">
+        <div class="order-thumb">${item.image ? `<img src="${esc(item.image)}" alt=""/>` : esc(item.emoji)}</div>
+        <div class="order-info">
+          <div class="order-name">${esc(item.name)}</div>
+          <div class="order-meta">${meta}${item.type === 'upload' ? '<br/>Your file' : ''}</div>
+          <div class="order-qty">
+            <button class="qty-btn" onclick="changeCartQty(${i},-1)" aria-label="Fewer">−</button>
+            <span class="qty-num">${item.qty}</span>
+            <button class="qty-btn" onclick="changeCartQty(${i},1)" aria-label="More">+</button>
+          </div>
+        </div>
+        <div class="order-right">
+          ${each ? `<div class="order-price">${money(each * item.qty)}</div>` : '<div class="order-meta">Quoted</div>'}
+          <button class="link-btn" style="color:var(--text-muted);" onclick="removeFromCart(${i})">Remove</button>
+        </div>
+      </div>`;
+    }).join('');
+    const totalRow = total
+      ? `<div class="order-total"><span class="muted">${allPriced ? 'Estimated total' : 'Estimated (priced items)'}</span><strong>${money(total)}</strong></div>
+         <p class="muted" style="font-size:0.8rem;margin-bottom:0.75rem;">We'll confirm the final price, including any shipping, in your quote.</p>`
+      : '';
+    box.innerHTML = `<div class="order-items">${rows}</div>${totalRow}
+      <div class="order-links"><button class="link-btn" onclick="showPage('shop')">+ Add more from the shop</button></div>`;
+    box.style.display = '';
   }
 
   function updateCart() {
@@ -1322,7 +1438,8 @@
     const itemsEl = document.getElementById('cart-items');
     const total = cart.reduce((s, i) => s + i.qty, 0);
     countEl.textContent = total;
-    fab.classList.toggle('hidden', cart.length === 0);
+    // The order review page lists the cart itself, so the floating button would only cover it.
+    fab.classList.toggle('hidden', cart.length === 0 || currentPage === 'request');
 
     itemsEl.innerHTML = cart.map((item, i) => `
       <div class="cart-item">
@@ -1345,15 +1462,8 @@
 
   function sendCartToQuote() {
     if (cart.length === 0) return;
-    const summary = cart.map(item =>
-      `• ${item.name} — ${item.material}, ${item.color}, Qty: ${item.qty}`
-    ).join('\n');
-    showPage('request');
     toggleCart();
-    setTimeout(() => {
-      document.getElementById('service').value = 'Print from a file';
-      document.getElementById('description').value = 'ORDER FROM SHOP:\n' + summary;
-    }, 300);
+    showPage('request');
   }
 
   let currentPage = 'home';
@@ -1372,6 +1482,8 @@
     currentPage = name;
     if (name === 'shop') { loadData().then(() => buildShop()); }
     if (name === 'account') renderAccount();
+    if (name === 'request') setRequestMode();
+    updateCart();
   }
   window.addEventListener('popstate', (e) => {
     // Plain #anchor jumps (e.g. #services) carry no state: leave them alone.
@@ -1509,7 +1621,10 @@
             <div><span class="req-ref">${esc(r.id)}</span> · <span class="req-date">${r.kind === 'order' ? 'Shop order' : 'Quote request'} · ${fmtDate(r.created)}</span></div>
             <span class="status-badge st-${esc(r.status)}">${esc(statusLabel(r.status))}</span>
           </div>
-          ${r.items && r.items.length ? `<ul class="req-items">${r.items.map(i => `<li>${esc(i.name)} — ${esc(i.material)}, ${esc(i.color)} × ${i.qty}</li>`).join('')}</ul>` : ''}
+          ${r.items && r.items.length ? `<div class="order-items" style="margin:0.5rem 0 0;">${r.items.map(i => `<div class="order-item">
+            <div class="order-thumb" style="width:48px;height:48px;font-size:1.3rem;">${i.image ? `<img src="${esc(i.image)}" alt=""/>` : '🖨️'}</div>
+            <div class="order-info"><div class="order-name">${esc(i.name)} × ${i.qty}</div><div class="order-meta">${esc(i.material)} · ${esc(i.color)}</div></div>
+          </div>`).join('')}</div>` : ''}
           ${r.message ? `<div class="req-body" style="margin-top:0.5rem;">${esc(r.message)}</div>` : ''}
           ${r.files && r.files.length ? `<div class="req-files" style="margin-top:0.5rem;">${r.files.map(f => `<a href="/api/files/${encodeURIComponent(r.id)}/${f.n}" onclick='downloadFile(${JSON.stringify(r.id)}, ${esc(JSON.stringify(f))}, this); return false;'>📎 ${esc(f.name)}</a>`).join('')}</div>` : ''}
           ${(r.price || r.customerMessage) ? `<div class="req-quote">
@@ -1672,14 +1787,15 @@
       alert('Please enter your name and email to submit.');
       return;
     }
-    if (!description) {
+    const orderMode = cart.length > 0;
+    if (!description && !orderMode) {
       alert('Please describe your project before submitting.');
       return;
     }
 
     const btn = document.querySelector('.form-submit .btn-primary');
     const fileInput = document.getElementById('fileInput');
-    const files = [fileInput.files[0], ...cart.filter(i => i.file).map(i => i.file)].filter(Boolean);
+    const files = [orderMode ? null : fileInput.files[0], ...cart.filter(i => i.file).map(i => i.file)].filter(Boolean);
     const MB = 1024 * 1024;
     const tooBig = files.find(f => f.size > MAX_FILE_MB * MB);
     if (tooBig) {
@@ -1713,14 +1829,14 @@
     }
     btn.textContent = 'Sending…';
 
-    const items = cart.map(i => ({ name: i.name, material: i.material, color: i.color, qty: i.qty, productId: i.productId || '' }));
+    const items = cart.map(i => ({ name: i.name, material: i.material, color: i.color, qty: i.qty, productId: i.productId || '', price: i.price || '', image: i.image || '' }));
     const apiData = new FormData();
     apiData.append('name', name);
     apiData.append('email', email);
     apiData.append('phone', phone);
-    apiData.append('service', service);
-    apiData.append('material', activeMaterial ? activeMaterial.textContent : '');
-    apiData.append('color', colorText);
+    apiData.append('service', orderMode ? 'Shop order' : service);
+    apiData.append('material', orderMode ? '' : (activeMaterial ? activeMaterial.textContent : ''));
+    apiData.append('color', orderMode ? '' : colorText);
     apiData.append('message', description);
     apiData.append('items', JSON.stringify(items));
     apiData.append('website', document.getElementById('website').value);
@@ -1753,7 +1869,9 @@
     formData.append('service', service || 'Not specified');
     formData.append('material', material);
     formData.append('color', colorText || 'Not specified');
-    formData.append('message', description);
+    formData.append('message', orderMode
+      ? 'SHOP ORDER:\n' + cart.map(i => `• ${i.name} — ${i.material}, ${i.color}, Qty: ${i.qty}`).join('\n') + (description ? '\n\nNotes: ' + description : '')
+      : description);
 
     if (fileInput.files[0]) {
       formData.append('attachment', fileInput.files[0]);

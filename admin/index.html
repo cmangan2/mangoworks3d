@@ -110,6 +110,7 @@
   .kv dd { overflow-wrap: anywhere; }
   .pre { white-space: pre-wrap; font-size: 0.9rem; line-height: 1.55; overflow-wrap: anywhere; }
   .items { padding-left: 1.1rem; line-height: 1.7; font-size: 0.92rem; }
+  .item-row { display: flex; gap: 0.75rem; align-items: center; padding: 0.4rem 0; }
   .paid-pill, .unpaid-pill { display: inline-block; font-size: 0.68rem; font-weight: 900; letter-spacing: 1px; padding: 0.15rem 0.55rem; border-radius: 50px; vertical-align: middle; }
   .paid-pill { background: rgba(0,201,167,0.18); color: var(--teal); }
   .unpaid-pill { background: rgba(255,107,107,0.15); color: var(--red); }
@@ -471,7 +472,11 @@
           ${r.material ? `<dt>Material</dt><dd>${esc(r.material)}</dd>` : ''}
           ${r.color ? `<dt>Color</dt><dd>${esc(r.color)}</dd>` : ''}
         </dl>
-        ${r.items && r.items.length ? `<label style="margin-top:1rem;">Items</label><ul class="items">${r.items.map(i => `<li>${esc(i.name)} — ${esc(i.material)}, ${esc(i.color)} × ${i.qty}</li>`).join('')}</ul>` : ''}
+        ${r.items && r.items.length ? `<label style="margin-top:1rem;">Items</label>${r.items.map(i => `<div class="item-row">
+          <div class="prod-thumb" style="width:48px;height:48px;font-size:1.3rem;">${i.image ? `<img src="${esc(i.image)}" alt=""/>` : '🖨️'}</div>
+          <div class="grow"><div style="font-weight:800;">${esc(i.name)} × ${i.qty}</div>
+            <div class="muted" style="font-size:0.85rem;">${i.material === 'Special order' ? '<span style="color:var(--mango);font-weight:800;">Special order:</span> ' + esc(i.color) : esc(i.material) + ' · ' + esc(i.color)}${i.price ? ' · ' + esc(i.price) + ' each' : ''}</div></div>
+        </div>`).join('')}` : ''}
         ${r.message ? `<label style="margin-top:1rem;">Message</label><div class="pre">${esc(r.message)}</div>` : ''}
         ${r.files && r.files.length ? `<label style="margin-top:1rem;">Files</label>${r.files.map(f => `<div><a href="/api/files/${encodeURIComponent(r.id)}/${f.n}" onclick='downloadFile(${JSON.stringify(r.id)}, ${esc(JSON.stringify(f))}, this); return false;'>📎 ${esc(f.name)}</a> <span class="muted">(${fmtSize(f.size)})</span></div>`).join('')}` : ''}
       </div>
